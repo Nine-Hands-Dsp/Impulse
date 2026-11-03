@@ -3,6 +3,7 @@
 //   ImpulseTool process <in.wav> <out.wav> <rate> <block> [irA] [irB] [mix] [overload] [variphi] [normalize]
 #include "../PluginProcessor.h"
 #include "../PluginEditor.h"
+#include "../ColourPicker.h"
 
 static void setP (ImpulseProcessor& p, const char* id, float v)
 {
@@ -39,6 +40,43 @@ int main (int argc, char** argv)
         std::printf ("editor %d x %d -> %s\n", ed->getWidth(), ed->getHeight(), out.getFullPathName().toRawUTF8());
         ed.reset();
         return 0;
+    }
+    if (mode == "pickertest")
+    {
+        // reproduit : nuancier ouvert, case du code avec le focus, clic sur une couleur rapide, puis OK
+        proc.accentColour = 0xff4fc3f7;
+        std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
+        auto* ie = dynamic_cast<ImpulseEditor*> (ed.get());
+        ie->openColourPicker (nullptr);
+        juce::Component* picker = nullptr;
+        std::function<void (juce::Component*)> find = [&] (juce::Component* c)
+        {
+            for (auto* ch : c->getChildren()) { if (dynamic_cast<WigaColourPicker*> (ch) != nullptr) picker = ch; find (ch); }
+        };
+        find (ed.get());
+        if (picker == nullptr) { std::printf ("no picker\n"); return 4; }
+        const float k = (float) picker->getWidth() / 320.0f;
+        auto click = [&] (float x, float y)
+        {
+            auto src = juce::Desktop::getInstance().getMainMouseSource();
+            const juce::Point<float> pos (x * k, y * k);
+            juce::MouseEvent e (src, pos, {}, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, picker, picker, juce::Time::getCurrentTime(), pos, juce::Time::getCurrentTime(), 1, false);
+            picker->mouseDown (e);
+        };
+        click (16.0f + 27.0f * 7 + 10.0f, 46.0f);          // rouge
+        std::printf ("after swatch: %08x\n", (unsigned) proc.accentColour.load());
+        click (320.0f - 14.0f - 31.0f, 247.0f);             // OK
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+        std::printf ("after OK: %08x\n", (unsigned) proc.accentColour.load());
+        const bool ok1 = proc.accentColour.load() == 0xffff4040;
+        // code tape dans la case puis OK
+        ie->openColourPicker (nullptr);
+        picker = nullptr; find (ed.get());
+        if (auto* te = dynamic_cast<juce::TextEditor*> (picker->getChildComponent (0))) { te->setText ("#172633", true); juce::MessageManager::getInstance()->runDispatchLoopUntil (50); }
+        click (320.0f - 14.0f - 31.0f, 247.0f);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (100);
+        std::printf ("typed #172633 then OK: %08x\n", (unsigned) proc.accentColour.load());
+        return ok1 && proc.accentColour.load() == 0xff172633 ? 0 : 5;
     }
     if (mode == "process")
     {

@@ -677,7 +677,7 @@ void ImpulseProcessor::stepIR (int s, int dir)
     if (s < 0 || s >= numSlots) return;
     juce::File current;
     { const juce::ScopedLock sl (slotLock); current = juce::File (slots[s].info.path.isNotEmpty() && juce::File::isAbsolutePath (slots[s].info.path) ? slots[s].info.path : juce::String()); }
-    const juce::File folder = current.getParentDirectory().isDirectory() && current != juce::File() ? current.getParentDirectory() : lastFolder;
+    const juce::File folder = startFolder (s);
     if (! folder.isDirectory()) return;
     juce::Array<juce::File> files;
     for (const auto& f : folder.findChildFiles (juce::File::findFiles, false))
@@ -688,6 +688,17 @@ void ImpulseProcessor::stepIR (int s, int dir)
     int idx = files.indexOf (current);
     idx = idx < 0 ? (dir > 0 ? 0 : files.size() - 1) : (idx + dir + files.size()) % files.size();
     loadIR (s, files[idx]);
+}
+
+juce::File ImpulseProcessor::startFolder (int s) const
+{
+    juce::String path;
+    { const juce::ScopedLock sl (slotLock); path = slots[juce::jlimit (0, numSlots - 1, s)].info.path; }
+    if (path.isNotEmpty() && juce::File::isAbsolutePath (path) && juce::File (path).getParentDirectory().isDirectory())
+        return juce::File (path).getParentDirectory();
+    const auto def = ImpulseSettings::irFolder (JucePlugin_Name);
+    if (def.isDirectory()) return def;
+    return lastFolder;
 }
 
 IRInfo ImpulseProcessor::getInfo (int s) const

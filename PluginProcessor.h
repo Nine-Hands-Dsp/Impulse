@@ -68,6 +68,7 @@ public:
     juce::uint32 getInfoVersion() const { return infoVersion.load(); }
     static bool isIRFile (const juce::File& f);
     juce::File lastFolder;                                   // dernier dossier ouvert (bouton dossier)
+    juce::File startFolder (int slot) const;                 // dossier de l'IR du slot, sinon dossier des IR par defaut, sinon le dernier
 
     // ---------------------------------------------------------------- presets (fichiers .impulse)
     static juce::File presetFolder();

@@ -59,15 +59,17 @@ def content(lang):
             ["14", "VARIPHI", t("Fine delay of B (0 to 1 ms): phase between the two mics", "Retard fin de B (0 à 1 ms) : phase entre les deux micros")],
             ["15", t("Status line", "Ligne d'état"), t("Value of the control being moved, MIDI Learn, messages", "Valeur de la commande qui bouge, MIDI Learn, messages")]]
     b += [("h1", t("3. Interface overview", "3. Vue d'ensemble de l'interface")),
-          ("img", "annotated.png", 174, t("Slot B (right) works exactly like slot A.", "Le slot B (à droite) fonctionne exactement comme le slot A.")),
+          ("img", "annotated.png", 168, t("Slot B (right) works exactly like slot A.", "Le slot B (à droite) fonctionne exactement comme le slot A.")),
           ("table", rows, [8, 34, None], {"small": True})]
     # 4. Controls
-    b += [("pb",), ("h1", t("4. Controls", "4. Les commandes")),
+    b += [("cond", 60), ("h1", t("4. Controls", "4. Les commandes")),
           ("h2", t("Loading IRs (slots A and B)", "Charger des IR (slots A et B)")),
           ("bullets", [t("<b>Formats</b>: WAV, AIFF, FLAC, 16 / 24 / 32-bit, any sample rate, mono or stereo (a file with more channels uses its first two). Up to 10 seconds: cabinet IRs, but also room or reverb IRs.",
                          "<b>Formats</b> : WAV, AIFF, FLAC, 16 / 24 / 32 bits, toute fréquence, mono ou stéréo (un fichier à plus de canaux utilise ses deux premiers). Jusqu'à 10 secondes : IR de baffle, mais aussi de pièce ou de reverb."),
                        t("<b>Load</b>: click the name box or the folder button, or <b>drag and drop</b> a file onto a slot. Drop <b>two files at once</b>: the first goes into A, the second into B. Dropping a folder loads its first IR.",
                          "<b>Charger</b> : cliquez sur le cadre du nom ou sur le bouton dossier, ou <b>glissez-déposez</b> un fichier sur un slot. Déposez <b>deux fichiers d'un coup</b> : le premier va dans A, le second dans B. Déposer un dossier charge sa première IR."),
+                       t("<b>Default IR folder</b>: gear &gt; IR folder &gt; Choose default IR folder... sets where your IR library lives (section 5). When a slot already holds an IR, the folder button and the arrows use the folder of that IR.",
+                         "<b>Dossier des IR par défaut</b> : roue dentée &gt; IR folder &gt; Choose default IR folder... indique où se trouve votre bibliothèque d'IR (section 5). Quand un slot contient déjà une IR, le bouton dossier et les flèches utilisent le dossier de cette IR."),
                        t("<b>Browse</b>: the arrows load the previous / next IR of the same folder (natural order, wrapping around). The switch is a smooth crossfade, without click: ideal to compare mics while playing.",
                          "<b>Parcourir</b> : les flèches chargent l'IR précédente / suivante du même dossier (ordre naturel, en boucle). Le changement se fait en fondu, sans clic : idéal pour comparer des micros en jouant."),
                        t("<b>Right-click</b> on a name or a waveform: Load IR, Previous / Next IR in folder, Show in folder, Clear, and the gain applied to this IR.",
@@ -93,6 +95,8 @@ def content(lang):
     b += [("h1", t("5. Settings (gear button)", "5. Réglages (roue dentée)")),
           ("table", [[t("Item", "Élément"), t("Role", "Rôle")],
                      ["Colour...", t("Colour picker (section 7)", "Nuancier (section 7)")],
+                     ["IR folder", t("Default IR folder, shared by all Impulse windows: the folder button of an empty slot opens there, and the arrows of an empty slot browse it. Choose default IR folder..., Show default IR folder, or No default folder (use the last folder used).",
+                                     "Dossier des IR par défaut, commun à toutes les fenêtres d'Impulse : le bouton dossier d'un slot vide s'ouvre dedans, et les flèches d'un slot vide le parcourent. Choose default IR folder..., Show default IR folder, ou No default folder (dernier dossier utilisé).")],
                      ["Normalize IRs", t("On (default): every IR is brought to the same loudness (unit energy, TONE3000 method, corrected for the sample rate), -6 dB for a cabinet IR so that the output is about the input level on an amp signal, no pad for a long IR (reverb, &gt; 1 s). Off: raw IR at -18 dB (NAM law).",
                                          "Activé (par défaut) : chaque IR est ramenée au même niveau (énergie unité, méthode TONE3000, corrigée de la fréquence d'échantillonnage), -6 dB pour une IR de baffle pour que la sortie soit à peu près au niveau de l'entrée sur un signal d'ampli, sans pad pour une IR longue (reverb, &gt; 1 s). Désactivé : IR brute à -18 dB (loi NAM).")],
                      ["Low cut", t("Off, 40, 60, 80, 100, 120, 150 Hz (12 dB/oct, after the mix)", "Off, 40, 60, 80, 100, 120, 150 Hz (12 dB/oct, après le mélange)")],
@@ -127,9 +131,9 @@ def content(lang):
            [("h2", t("Accent colour", "Couleur d'accent")),
             ("p", t("Gear &gt; <b>Colour...</b> (or right-click on an empty area) opens the Octopus colour picker: quick colours, <b>MY COLOURS</b> (click an empty slot to save the current colour, right-click to remove), hue / saturation / brightness, and a box where you can <b>type a colour code</b> (e.g. #172633). The colour changes live; DEFAULT gives back the original blue, OK closes.",
                     "Roue dentée &gt; <b>Colour...</b> (ou clic droit sur une zone vide) ouvre le nuancier d'Octopus : couleurs rapides, <b>MY COLOURS</b> (clic sur un emplacement vide pour enregistrer la couleur, clic droit pour l'effacer), teinte / saturation / luminosité, et une case pour <b>taper un code couleur</b> (ex. #172633). La couleur change en direct ; DEFAULT rend le bleu d'origine, OK ferme.")),
-            ("p", t("The colour is saved with the project and becomes the colour of new Impulse windows. Very dark colours make the waveforms hard to see.",
-                    "La couleur est sauvegardée avec le projet et devient celle des nouvelles fenêtres d'Impulse. Une couleur très sombre rend les formes d'onde peu visibles."))]),
-          ("img", "colour.png", 150, t("Same interface with an orange accent and a stereo IR in slot B.", "La même interface avec un accent orange et une IR stéréo dans le slot B."))]
+            ("p", t("A code typed in the box is applied with Enter or OK. The colour is saved with the project and becomes the colour of new Impulse windows. Very dark colours make the waveforms hard to see.",
+                    "Un code tapé dans la case s'applique avec Entrée ou OK. La couleur est sauvegardée avec le projet et devient celle des nouvelles fenêtres d'Impulse. Une couleur très sombre rend les formes d'onde peu visibles."))]),
+          ("img", "colour.png", 118, t("Same interface with an orange accent and a stereo IR in slot B.", "La même interface avec un accent orange et une IR stéréo dans le slot B."))]
     # 8. Presets
     b += [("cond", 70), ("h1", "8. Presets"),
           ("p", t("Impulse has no factory presets (IRs are your own files). The menu at the top contains <b>Init (empty)</b>, your presets in alphabetical order, <b>Save preset as...</b>, <b>Save</b>, <b>Delete</b> and <b>Open presets folder</b>. The arrows on the left of the menu load the previous / next preset. A <b>*</b> after the name means the setting has changed since the preset was loaded; “(Custom)” means no preset is loaded.",

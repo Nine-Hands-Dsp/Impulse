@@ -780,7 +780,7 @@ private:
     void chooseFile (int s)
     {
         chooser = std::make_unique<juce::FileChooser> (juce::String ("Load impulse response ") + (s == 0 ? "A" : "B"),
-                                                       proc.lastFolder, "*.wav;*.aif;*.aiff;*.flac");
+                                                       proc.startFolder (s), "*.wav;*.aif;*.aiff;*.flac");
         juce::Component::SafePointer<ImpulseContent> sp (this);
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                               [sp, s] (const juce::FileChooser& fc)
@@ -1040,6 +1040,25 @@ void ImpulseEditor::resetRenderer()
 
 void ImpulseEditor::paint (juce::Graphics& g) { g.fillAll (col::outer); }
 
+// dossier des IR par defaut : le bouton dossier s'ouvre la quand le slot est vide,
+// et les fleches d'un slot vide parcourent ce dossier
+void ImpulseEditor::chooseIRFolder()
+{
+    const auto cur = ImpulseSettings::irFolder (JucePlugin_Name);
+    folderChooser = std::make_unique<juce::FileChooser> ("Default IR folder", cur.isDirectory() ? cur : proc.lastFolder);
+    juce::Component::SafePointer<ImpulseEditor> sp (this);
+    folderChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                                [sp] (const juce::FileChooser& fc)
+                                {
+                                    const auto f = fc.getResult();
+                                    if (f.isDirectory())
+                                    {
+                                        ImpulseSettings::setIrFolder (JucePlugin_Name, f);
+                                        if (sp != nullptr) sp->content->showStatus ("IR folder: " + f.getFileName());
+                                    }
+                                });
+}
+
 // nuancier d'Octopus, ouvert dans la fenetre du plugin pres de 'near' (pas de fenetre flottante que l'hote pourrait cacher)
 void ImpulseEditor::openColourPicker (juce::Component* near)
 {
@@ -1209,6 +1228,15 @@ static void showGearMenu (juce::Component& c)
     for (int i = 0; i < 7; ++i) lowM.addItem (10 + i, i == 0 ? juce::String ("Off") : juce::String (lows[i]) + " Hz", true, std::abs (low - (float) lows[i]) < 1.0f);
     for (int i = 0; i < 7; ++i) highM.addItem (20 + i, i == 0 ? juce::String ("Off") : juce::String (highs[i] / 1000.0, 1).replace (".0", "") + " kHz", true, std::abs (high - (float) highs[i]) < 10.0f);
     m.addItem (2, "Colour...");
+    {
+        const auto def = ImpulseSettings::irFolder (JucePlugin_Name);
+        juce::PopupMenu folderM;
+        folderM.addSectionHeader (def.isDirectory() ? def.getFullPathName() : juce::String ("No default folder (last folder used)"));
+        folderM.addItem (40, "Choose default IR folder...");
+        folderM.addItem (41, "Show default IR folder", def.isDirectory());
+        folderM.addItem (42, "No default folder (use last folder)", def != juce::File(), def == juce::File());
+        m.addSubMenu ("IR folder", folderM);
+    }
     m.addSeparator();
     m.addSubMenu ("Low cut", lowM);
     m.addSubMenu ("High cut", highM);
@@ -1226,6 +1254,9 @@ static void showGearMenu (juce::Component& c)
             if (auto* prm = p->apvts.getParameter (id)) prm->setValueNotifyingHost (prm->convertTo0to1 (v));
         };
         if (r == 2) { if (auto* ed = sp->findParentComponentOfClass<ImpulseEditor>()) ed->openColourPicker (sp.getComponent()); }
+        else if (r == 40) { if (auto* ed = sp->findParentComponentOfClass<ImpulseEditor>()) ed->chooseIRFolder(); }
+        else if (r == 41) ImpulseSettings::irFolder (JucePlugin_Name).revealToUser();
+        else if (r == 42) ImpulseSettings::setIrFolder (JucePlugin_Name, juce::File());
         else if (r == 1) set ("normalize", p->apvts.getRawParameterValue ("normalize")->load() > 0.5f ? 0.0f : 1.0f);
         else if (r >= 10 && r < 17) set ("lowcut", (float) lows[r - 10]);
         else if (r >= 20 && r < 27) set ("highcut", (float) highs[r - 20]);

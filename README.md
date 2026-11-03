@@ -10,6 +10,7 @@ Chargeur de réponses impulsionnelles (IR) double **A / B** pour amplis guitare 
 - **OVERLOAD** : surcharge du haut-parleur (saturation asymétrique, anti-repliement ADAA, sans latence ; 0 % = signal intact).
 - **VARIPHI** : décalage fin de B (0 à 1 ms) pour régler la phase entre les deux micros.
 - **Couleur** (roue dentée > Colour..., ou clic droit sur le fond) : nuancier d'Octopus (couleurs rapides, MY COLOURS, teinte / saturation / luminosité, code hexadécimal à taper, Default = bleu d'origine). La couleur est enregistrée dans le projet et reprise par les nouvelles fenêtres.
+- **Dossier des IR par défaut** (roue dentée > IR folder) : le bouton dossier et les flèches d'un slot vide partent de ce dossier ; un slot chargé utilise le dossier de son IR.
 - Roue dentée : normalisation, coupe-bas, coupe-haut, MIDI, taille de la fenêtre.
 - Presets (`%APPDATA%\Studio Wiga\Impulse\Presets` / `~/Library/Application Support/Studio Wiga/Impulse/Presets`) : les IR sont copiées dans le preset et dans le projet (≤ 4 s), le son revient même si le fichier a été déplacé.
 - MIDI Learn sur toutes les commandes (clic droit), aucun CC par défaut ; footswitch à accrochage ou momentané ; course de pédale apprise automatiquement, CC 14 bits.

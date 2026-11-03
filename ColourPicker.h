@@ -34,6 +34,18 @@ namespace ImpulseSettings
         x->setAttribute ("accent", juce::String::toHexString ((juce::int64) c));
         save (plugin, *x);
     }
+    // dossier des IR par defaut (vide = dernier dossier utilise), commun a toutes les fenetres
+    inline juce::File irFolder (const juce::String& plugin)
+    {
+        const auto p = load (plugin)->getStringAttribute ("irFolder");
+        return p.isNotEmpty() && juce::File::isAbsolutePath (p) ? juce::File (p) : juce::File();
+    }
+    inline void setIrFolder (const juce::String& plugin, const juce::File& f)
+    {
+        auto x = load (plugin);
+        x->setAttribute ("irFolder", f == juce::File() ? juce::String() : f.getFullPathName());
+        save (plugin, *x);
+    }
     inline juce::Array<juce::uint32> userColours (const juce::String& plugin)
     {
         juce::Array<juce::uint32> out;
@@ -76,8 +88,13 @@ public:
         hex.setColour (juce::TextEditor::textColourId, juce::Colour (0xffeef1f5));
         hex.setColour (juce::CaretComponent::caretColourId, juce::Colours::white);
         hex.setTooltip ("Type a colour code, e.g. #172633");
+        // le code n'est relu que s'il a ete tape (sinon OK remettait l'ancienne couleur : la case garde le
+        // focus clavier a l'ouverture et son texte n'etait plus mis a jour quand on choisissait une couleur)
+        hex.onTextChange = [this] { hexEdited = true; };
         hex.onReturnKey = [this] { applyHex(); };
         hex.onFocusLost = [this] { applyHex(); };
+        hex.setWantsKeyboardFocus (true);
+        hex.setExplicitFocusOrder (0);
         addAndMakeVisible (hex);
         hex.setBounds (R (hexRect()).toNearestInt());
         updateHex();
@@ -234,6 +251,7 @@ private:
     int drag = -1, hoverUser = -1;
     juce::Array<juce::uint32> user;
     juce::TextEditor hex;
+    bool hexEdited = false;
 
     juce::Rectangle<float> R (float x, float y, float w, float h) const { return { x * k, y * k, w * k, h * k }; }
     juce::Rectangle<float> R (juce::Rectangle<float> u) const { return u * k; }
@@ -265,9 +283,11 @@ private:
         if (s > 0.001f) hue = h;
         sat = s; bri = v;
     }
-    void updateHex() { if (! hex.hasKeyboardFocus (true)) hex.setText ("#" + colour().toDisplayString (false), false); }
+    void updateHex() { hex.setText ("#" + colour().toDisplayString (false), false); hexEdited = false; }
     void applyHex()
     {
+        if (! hexEdited) return;
+        hexEdited = false;
         auto t = hex.getText().trim().removeCharacters ("#");
         if (t.length() == 3) t = juce::String::charToString (t[0]) + t[0] + t[1] + t[1] + t[2] + t[2];
         if (t.length() == 6) { setHsv (juce::Colour ((juce::uint32) (0xff000000u | (juce::uint32) t.getHexValue32()))); if (onChange) onChange (colour()); repaint(); }

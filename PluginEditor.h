@@ -19,6 +19,7 @@ public:
     static constexpr int numSizes = 3;
     ImpulseProcessor& getProc() { return proc; }
     void openColourPicker (juce::Component* near);   // nuancier (couleur d'accent)
+    void chooseIRFolder();                           // dossier des IR par defaut
 
 private:
     friend class ImpulseContent;         // son timer surveille le moteur de rendu (anti-gel v2)
@@ -29,5 +30,6 @@ private:
     juce::uint32 lastRendererCheck = 0;
     ImpulseProcessor& proc;
     std::unique_ptr<ImpulseContent> content;
+    std::unique_ptr<juce::FileChooser> folderChooser;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ImpulseEditor)
 };
