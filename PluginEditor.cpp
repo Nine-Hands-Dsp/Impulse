@@ -498,10 +498,7 @@ public:
         }
         else drawStatic (g);    // premiere image seulement, avant que le timer ait prepare le cache
 
-        // titre + ligne d'etat
-        g.setColour (juce::Colour (0xffbdbdbd));
-        g.setFont (fBold (14.5f));
-        g.drawText ("IMPULSE", juce::Rectangle<float> (60, 10, 90, 28), juce::Justification::centredLeft);
+        // ligne d'etat (le logo IMPULSE est dans le fond)
         const auto st = statusText();
         if (st.isNotEmpty())
         {
@@ -606,6 +603,14 @@ public:
         drawButtonBg (g, rGear, false, false);
         g.setColour (juce::Colours::black.withAlpha (0.35f));
         g.drawLine (48.0f, 10.0f, 48.0f, 39.0f, 1.0f);
+        if (title.isValid())
+        {
+            // logo IMPULSE a la place du titre texte
+            const float h = 24.37f, w = h * (float) title.getWidth() / (float) title.getHeight();
+            g.setOpacity (0.92f);
+            g.drawImage (title, juce::Rectangle<float> (60.0f, 24.5f - h * 0.5f, w, h));
+            g.setOpacity (1.0f);
+        }
 
         // colonne centrale
         juce::ColourGradient cg (col::center.brighter (0.03f), 0, rCenter.getY(), col::center.darker (0.08f), 0, rCenter.getBottom(), false);
@@ -985,6 +990,7 @@ private:
     int drawnLearn = -1, dropHover = -1;
     bool drawnBlink = false;
     juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::logo_studio_wiga_blanc_png, BinaryData::logo_studio_wiga_blanc_pngSize);
+    juce::Image title = juce::ImageCache::getFromMemory (BinaryData::logo_impulse_png, BinaryData::logo_impulse_pngSize);
 
     // anti-gel v2
     juce::Image bgCache;
@@ -1069,11 +1075,11 @@ void ImpulseEditor::openColourPicker (juce::Component* near)
     auto apply = [sp] (juce::Colour c)
     {
         if (sp == nullptr) return;
-        sp->proc.accentColour = c.getARGB();
-        ImpulseSettings::setAccent (JucePlugin_Name, c.getARGB());   // couleur des nouvelles fenetres
+        sp->proc.accentColour = c.getARGB();                          // en direct, sans acces disque
         sp->content->repaint();
     };
     picker->onChange = apply;
+    picker->onCommit = [] (juce::Colour c) { ImpulseSettings::setAccent (JucePlugin_Name, c.getARGB()); };   // couleur des nouvelles fenetres
     picker->onDefault = [apply] { apply (juce::Colour (ImpulseSettings::kDefaultAccent)); };
     auto area = near != nullptr ? getLocalArea (near, near->getLocalBounds()) : getLocalBounds().withSizeKeepingCentre (10, 10);
     auto* layer = new WigaPickerLayer (std::move (picker), area, getLocalBounds());   // se detruit en se fermant

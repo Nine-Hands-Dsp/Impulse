@@ -103,6 +103,7 @@ public:
     std::function<void (juce::Colour)> onChange;
     std::function<void()> onDefault;
     std::function<void()> onClose;
+    std::function<void (juce::Colour)> onCommit;   // OK / Default : couleur finale (ecriture des reglages une seule fois)
     juce::Colour colour() const { return juce::Colour::fromHSV (hue, sat, bri, 1.0f); }
 
     void paint (juce::Graphics& g) override
@@ -294,7 +295,7 @@ private:
         hex.setText ("#" + colour().toDisplayString (false), false);
     }
     void changed() { if (onChange) onChange (colour()); updateHex(); repaint(); }
-    void close() { applyHex(); if (onClose) onClose(); }
+    void close() { applyHex(); if (onCommit) onCommit (colour()); if (onClose) onClose(); }
 };
 
 // calque pose sur toute la fenetre : legerement assombri, le nuancier pres de ce qu'il colore ; un clic a cote ferme

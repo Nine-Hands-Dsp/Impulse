@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 endif()
 
-project(WigaImpulse VERSION 1.2.0)
+project(WigaImpulse VERSION 1.2.1)
 
 option(IMPULSE_TOOLS "Build the Linux render / test tools" OFF)
 
@@ -26,7 +26,8 @@ juce_add_binary_data(ImpulseAssets SOURCES
   assets/Inter-SemiBold.otf
   assets/Inter-Bold.otf
   assets/Inter-Medium.otf
-  assets/logo_studio_wiga_blanc.png)
+  assets/logo_studio_wiga_blanc.png
+  assets/logo_impulse.png)
 
 if(APPLE)
   set(IMPULSE_FORMATS VST3 AU)
