@@ -827,7 +827,7 @@ private:
 public:
     // ---------------------------------------------------------------- menu clic droit (meme presentation que les autres pedales)
     // [MIDI Learn de la commande] [IR du slot] > Plugin size > Presets > Settings > MIDI > version
-    void showMainMenu (juce::Component* target, int learnIdx, int slot)
+    void showMainMenu (juce::Component* target, int learnIdx, int slot, bool withPresets = true)
     {
         juce::PopupMenu m;
         const int lt = proc.learnTarget.load();
@@ -860,10 +860,15 @@ public:
         m.addSubMenu ("Plugin size", sizes);
         m.addSeparator();
 
-        juce::PopupMenu presets;
-        const auto names = addPresetItems (presets);
-        m.addSubMenu ("Presets", presets);
-        m.addSeparator();
+        // Presets : dans le clic droit, pas dans la roue crantee (les presets ont leur menu en haut et la disquette)
+        juce::StringArray names;
+        if (withPresets)
+        {
+            juce::PopupMenu presets;
+            names = addPresetItems (presets);
+            m.addSubMenu ("Presets", presets);
+            m.addSeparator();
+        }
 
         auto& ap = proc.apvts;
         const bool norm = ap.getRawParameterValue ("normalize")->load() > 0.5f;
@@ -1364,4 +1369,8 @@ static void showContextMenu (juce::Component& c, int learnIdx)
     if (content != nullptr) content->showMainMenu (&c, learnIdx, -1);
 }
 
-static void showGearMenu (juce::Component& c) { showContextMenu (c, -1); }
+static void showGearMenu (juce::Component& c)
+{
+    auto* content = c.findParentComponentOfClass<ImpulseContent>();
+    if (content != nullptr) content->showMainMenu (&c, -1, -1, false);
+}
