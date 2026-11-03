@@ -1,0 +1,42 @@
+name: Build Impulse VST3
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build-macos:
+    runs-on: macos-15-intel   # binaire universel Intel + Apple Silicon
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Signature locale (ad-hoc) et archive
+        run: |
+          VST3=$(find build -type d -name "*.vst3" | head -n 1)
+          echo "Plugin : $VST3"
+          xattr -cr "$VST3"
+          codesign --force --deep --sign - "$VST3"
+          codesign --verify --deep --strict "$VST3"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "$VST3" "dist/Impulse-VST3-macOS.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Impulse-VST3-macOS
+          path: dist/*.zip
+  win:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: Impulse-VST3-Windows
+          path: build/Impulse_artefacts/Release/VST3/
