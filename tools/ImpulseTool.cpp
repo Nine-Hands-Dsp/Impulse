@@ -41,6 +41,24 @@ int main (int argc, char** argv)
         ed.reset();
         return 0;
     }
+    if (mode == "presettest")
+    {
+        proc.loadIR (0, juce::File (arg (2)));
+        proc.loadIR (1, juce::File (arg (3)));
+        setP (proc, "mix", -50.0f); setP (proc, "overload", 30.0f);
+        const juce::File f ("/tmp/impulse_test/My Export.impulse");
+        f.getParentDirectory().createDirectory();
+        const bool ex = proc.exportPreset (f);
+        proc.initPreset();
+        std::printf ("export=%d after init: A loaded=%d mix=%.0f\n", (int) ex, (int) proc.getInfo (0).loaded, proc.apvts.getRawParameterValue ("mix")->load());
+        const bool im = proc.importPreset (f);
+        std::printf ("import=%d preset='%s' A='%s' B='%s' mix=%.0f overload=%.0f\n", (int) im, proc.getPresetName().toRawUTF8(),
+                     proc.getInfo (0).name.toRawUTF8(), proc.getInfo (1).name.toRawUTF8(),
+                     proc.apvts.getRawParameterValue ("mix")->load(), proc.apvts.getRawParameterValue ("overload")->load());
+        const bool im2 = proc.importPreset (f);   // deuxieme import : nom numerote
+        std::printf ("import again=%d preset='%s'\n", (int) im2, proc.getPresetName().toRawUTF8());
+        return ex && im && im2 ? 0 : 6;
+    }
     if (mode == "pickertest")
     {
         // reproduit : nuancier ouvert, case du code avec le focus, clic sur une couleur rapide, puis OK

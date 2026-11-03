@@ -78,6 +78,8 @@ public:
     bool loadPreset (const juce::String& name);
     bool savePreset (const juce::String& name);
     bool deletePreset (const juce::String& name);
+    bool exportPreset (const juce::File& file);              // fichier .impulse n'importe ou (IR comprises)
+    bool importPreset (const juce::File& file);              // copie dans le dossier des presets puis chargement
     void stepPreset (int dir);
     void initPreset();
     juce::uint32 getPresetVersion() const { return presetVersion.load(); }

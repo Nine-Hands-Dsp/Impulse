@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 endif()
 
-project(WigaImpulse VERSION 1.2.2)
+project(WigaImpulse VERSION 1.2.3)
 
 option(IMPULSE_TOOLS "Build the Linux render / test tools" OFF)
 

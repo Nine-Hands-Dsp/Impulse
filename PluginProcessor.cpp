@@ -894,6 +894,35 @@ bool ImpulseProcessor::savePreset (const juce::String& rawName)
     return true;
 }
 
+bool ImpulseProcessor::exportPreset (const juce::File& file)
+{
+    auto xml = buildStateXml (true);
+    if (auto* m = xml->getChildByName ("MIDI")) xml->removeChildElement (m, true);
+    xml->setAttribute ("presetName", presetName.isNotEmpty() ? presetName : file.getFileNameWithoutExtension());
+    file.getParentDirectory().createDirectory();
+    return xml->writeTo (file);
+}
+
+bool ImpulseProcessor::importPreset (const juce::File& file)
+{
+    auto xml = juce::XmlDocument::parse (file);
+    if (xml == nullptr || ! xml->hasTagName ("IMPULSE")) return false;
+    // copie dans la liste des presets (un nom deja pris recoit un numero) puis chargement
+    auto name = juce::File::createLegalFileName (file.getFileNameWithoutExtension().trim());
+    if (name.isEmpty()) name = "Imported preset";
+    auto dest = presetFolder().getChildFile (name + ".impulse");
+    if (dest.existsAsFile() && dest != file)
+    {
+        int n = 2;
+        while (presetFolder().getChildFile (name + " " + juce::String (n) + ".impulse").existsAsFile()) ++n;
+        name = name + " " + juce::String (n);
+        dest = presetFolder().getChildFile (name + ".impulse");
+    }
+    presetFolder().createDirectory();
+    if (dest != file && ! file.copyFileTo (dest)) return false;
+    return loadPreset (name);
+}
+
 bool ImpulseProcessor::deletePreset (const juce::String& name)
 {
     const bool ok = presetFolder().getChildFile (name + ".impulse").deleteFile();
