@@ -166,30 +166,54 @@ public:
         g.fillEllipse (dot.x - 2.2f, dot.y - 2.2f, 4.4f, 4.4f);
         // valeur au centre
         g.setColour (juce::Colours::white);
-        g.setFont (fBold (21.0f));
-        g.drawText (juce::String ((int) std::lround (value())), juce::Rectangle<float> (c.x - 26, c.y - 13, 52, 26), juce::Justification::centred);
+        // MIX : valeur + cote dominant (« 50A », « 30B », « 0 » au centre) ; autres potards : valeur seule
+        const int v = (int) std::lround (value());
+        const juce::String txt = bipolar && v != 0 ? juce::String (std::abs (v)) + (v < 0 ? "A" : "B") : juce::String (v);
+        g.setFont (fBold (txt.length() >= 4 ? 17.5f : 21.0f));
+        g.drawText (txt, juce::Rectangle<float> (c.x - 26, c.y - 13, 52, 26), juce::Justification::centred);
         if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat(), 6.0f);
     }
 
     void mouseDown (const juce::MouseEvent& e) override
     {
         if (e.mods.isPopupMenu()) { showContextMenu (*this, learnIdx); return; }
-        dragging = true; startNorm = norm();
+        dragging = true; startNorm = toVirtual (norm());
         attachment.beginGesture();
     }
     void mouseDrag (const juce::MouseEvent& e) override
     {
         if (! dragging) return;
         const float sens = e.mods.isShiftDown() ? 900.0f : 180.0f;
-        setNorm (startNorm - (float) e.getDistanceFromDragStartY() / sens + (float) e.getDistanceFromDragStartX() / (sens * 2.0f));
+        setNorm (fromVirtual (startNorm - (float) e.getDistanceFromDragStartY() / sens + (float) e.getDistanceFromDragStartX() / (sens * 2.0f)));
     }
     void mouseUp (const juce::MouseEvent&) override { if (dragging) attachment.endGesture(); dragging = false; }
+    // double-clic n'importe ou sur le potard (valeur comprise) : retour au centre / a la valeur par defaut
     void mouseDoubleClick (const juce::MouseEvent&) override { attachment.setValueAsCompleteGesture (param.convertFrom0to1 (param.getDefaultValue())); }
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& w) override
     {
-        attachment.beginGesture(); setNorm (norm() + w.deltaY * 0.06f); attachment.endGesture();
+        const float n = norm(), next = fromVirtual (toVirtual (n) + w.deltaY * 0.06f);
+        // molette : arret sur le centre quand on passe d'un cote a l'autre
+        const float target = bipolar && n != 0.5f && (next - 0.5f) * (n - 0.5f) < 0.0f ? 0.5f : next;
+        attachment.beginGesture(); setNorm (target); attachment.endGesture();
     }
 private:
+    // MIX : butee au centre. La course « virtuelle » de la souris contient une zone morte autour du centre
+    // (kDetent de chaque cote) : le potard reste sur 0 le temps de la traverser, puis repart sans perdre de course.
+    static constexpr float kDetent = 0.035f;
+    float toVirtual (float n) const
+    {
+        if (! bipolar) return n;
+        const float x = n - 0.5f;
+        if (x == 0.0f) return 0.5f;
+        return 0.5f + (x > 0 ? 1.0f : -1.0f) * (kDetent + std::abs (x) * (0.5f - kDetent) / 0.5f);
+    }
+    float fromVirtual (float v) const
+    {
+        if (! bipolar) return v;
+        const float x = v - 0.5f;
+        if (std::abs (x) <= kDetent) return 0.5f;
+        return 0.5f + (x > 0 ? 1.0f : -1.0f) * juce::jmin (0.5f, (std::abs (x) - kDetent) * 0.5f / (0.5f - kDetent));
+    }
     bool bipolar, dragging = false;
     float startNorm = 0.0f;
 };
