@@ -18,6 +18,7 @@ public:
     void applyScaleIndex (int idx);
     static constexpr int numSizes = 3;
     ImpulseProcessor& getProc() { return proc; }
+    void openColourPicker (juce::Component* near);   // nuancier (couleur d'accent)
 
 private:
     friend class ImpulseContent;         // son timer surveille le moteur de rendu (anti-gel v2)

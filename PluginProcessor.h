@@ -105,6 +105,7 @@ public:
     void clearLearn (int i);
     juce::String learnAssignText (int i) const;
 
+    std::atomic<juce::uint32> accentColour { 0xff4fc3f7 };   // couleur d'accent de l'interface (nuancier)
     std::atomic<int> uiScaleIdx { -1 };    // -1 = taille par defaut choisie, 0..2 = 60 / 75 / 100 %
 
     juce::AudioProcessorValueTreeState apvts;

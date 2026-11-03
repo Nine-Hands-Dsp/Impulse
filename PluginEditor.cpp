@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include <BinaryData.h>
 #include "WigaWindowSize.h"
+#include "ColourPicker.h"
 
 // ============================================================================
 // IMPULSE - interface (format rack large, d'apres la maquette fournie)
@@ -18,8 +19,10 @@ namespace
                            nameBox (0xff131313), btnHi (0xff414141), btnLo (0xff363636), btnEdge (0xff4a4a4a),
                            center  (0xff272727), strip (0xff2f2f2f), frame (0xff1c1c1c), waveTop (0xff0f0f0f),
                            waveBot (0xff1b1b1b), grid (0xff262626), label (0xff8a8a8a), text (0xffd6d6d6),
-                           dim     (0xff6c6c6c), accent (0xff4fc3f7), knobTrack (0xff141414), thumb (0xffababab),
+                           dim     (0xff6c6c6c), knobTrack (0xff141414), thumb (0xffababab),
                            letter  (0xff1d1d1d), err (0xffe0705a);
+        // couleur d'accent (nuancier) : reprise du processeur au debut de chaque paint (une couleur par instance)
+        juce::Colour accent (ImpulseSettings::kDefaultAccent);
     }
 
     // ---- polices (Inter, OFL) incluses dans le plugin
@@ -116,6 +119,7 @@ public:
     {
         attachment.sendInitialUpdate();
     }
+    void useAccent() const { col::accent = juce::Colour (proc.accentColour.load()); }
     float norm() const { return param.getValue(); }
     float value() const { return param.convertFrom0to1 (param.getValue()); }
     void setNorm (float n) { attachment.setValueAsPartOfGesture (param.convertFrom0to1 (juce::jlimit (0.0f, 1.0f, n))); }
@@ -134,6 +138,7 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        useAccent();
         const auto c = getLocalBounds().toFloat().getCentre();
         const float a0 = juce::degreesToRadians (-132.0f), a1 = juce::degreesToRadians (132.0f);
         const float n = norm(), ang = a0 + n * (a1 - a0);
@@ -200,6 +205,7 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        useAccent();
         const float cx = (float) getWidth() * 0.5f;
         const float yT = kFaderTop - top - 3.0f, yB = kFaderBot - top + 3.0f;
         g.setColour (juce::Colour (0xff1a1a1a));
@@ -254,6 +260,7 @@ public:
     ToggleBtn (ImpulseProcessor& p, const char* id, int learn, Kind k) : ParamControl (p, id, learn), kind (k) {}
     void paint (juce::Graphics& g) override
     {
+        useAccent();
         const auto r = getLocalBounds().toFloat();
         const bool on = norm() > 0.5f;
         if (kind == power)
@@ -305,9 +312,11 @@ public:
     std::function<void()> onClick;
     ImpulseProcessor* proc = nullptr;
     int learnIdx;
+    void useAccent() const { if (proc != nullptr) col::accent = juce::Colour (proc->accentColour.load()); }
 
     void paint (juce::Graphics& g) override
     {
+        useAccent();
         const auto r = getLocalBounds().toFloat();
         drawButtonBg (g, r, pressed, isMouseOver());
         const auto c = r.getCentre() + juce::Point<float> (0.0f, pressed ? 0.5f : 0.0f);
@@ -406,6 +415,7 @@ public:
         setSize (kW, kH);
         setOpaque (true);
 
+        save.proc = gear.proc = &proc;
         addAndMakeVisible (power); power.setBounds (toInt ({ 18, 12, 24, 24 }));
         addAndMakeVisible (save);  save.setBounds (toInt (rSave));
         addAndMakeVisible (gear);  gear.setBounds (toInt (rGear));
@@ -439,7 +449,7 @@ public:
             sl.folder = std::make_unique<IconBtn> (IconBtn::folder);
             sl.prev   = std::make_unique<IconBtn> (IconBtn::prev, s == 0 ? ImpulseProcessor::lPrevA : ImpulseProcessor::lPrevB);
             sl.next   = std::make_unique<IconBtn> (IconBtn::next, s == 0 ? ImpulseProcessor::lNextA : ImpulseProcessor::lNextB);
-            sl.prev->proc = sl.next->proc = &proc;
+            sl.prev->proc = sl.next->proc = sl.folder->proc = &proc;
             for (auto* b : { sl.folder.get(), sl.prev.get(), sl.next.get() }) addAndMakeVisible (*b);
             sl.folder->setBounds (toInt (rFolder.translated (dx, 0)));
             sl.prev->setBounds (toInt (rPrev.translated (dx, 0)));
@@ -475,6 +485,7 @@ public:
     // ---------------------------------------------------------------- dessin
     void paint (juce::Graphics& g) override
     {
+        useAccent();
         // anti-gel v2 : on dessine le fond deja calcule par le timer (aucun calcul lourd ici)
         lastPaintMs = juce::Time::getMillisecondCounter();
         repaintAskedMs = 0;
@@ -749,6 +760,7 @@ public:
     }
 
     void editorResized() { resizeSettle = 4; }
+    void useAccent() const { col::accent = juce::Colour (proc.accentColour.load()); }
 
 private:
     struct SlotUI
@@ -1027,6 +1039,28 @@ void ImpulseEditor::resetRenderer()
 }
 
 void ImpulseEditor::paint (juce::Graphics& g) { g.fillAll (col::outer); }
+
+// nuancier d'Octopus, ouvert dans la fenetre du plugin pres de 'near' (pas de fenetre flottante que l'hote pourrait cacher)
+void ImpulseEditor::openColourPicker (juce::Component* near)
+{
+    const float s = (float) getWidth() / (float) kW;
+    auto picker = std::make_unique<WigaColourPicker> ("Impulse colour", juce::Colour (proc.accentColour.load()),
+                                                      juce::jlimit (0.85f, 1.6f, s), JucePlugin_Name);
+    juce::Component::SafePointer<ImpulseEditor> sp (this);
+    auto apply = [sp] (juce::Colour c)
+    {
+        if (sp == nullptr) return;
+        sp->proc.accentColour = c.getARGB();
+        ImpulseSettings::setAccent (JucePlugin_Name, c.getARGB());   // couleur des nouvelles fenetres
+        sp->content->repaint();
+    };
+    picker->onChange = apply;
+    picker->onDefault = [apply] { apply (juce::Colour (ImpulseSettings::kDefaultAccent)); };
+    auto area = near != nullptr ? getLocalArea (near, near->getLocalBounds()) : getLocalBounds().withSizeKeepingCentre (10, 10);
+    auto* layer = new WigaPickerLayer (std::move (picker), area, getLocalBounds());   // se detruit en se fermant
+    addAndMakeVisible (layer);
+    layer->toFront (true);
+}
 void ImpulseEditor::parentHierarchyChanged() { useSoftwareRenderer(); }
 void ImpulseEditor::visibilityChanged() { useSoftwareRenderer(); if (isShowing()) repaint(); }
 
@@ -1143,6 +1177,8 @@ static void showContextMenu (juce::Component& c, int learnIdx)
     addSizeItems (m, c);
     if (learnIdx < 0)
     {
+        m.addSeparator();
+        m.addItem (2, "Colour...");
         juce::PopupMenu midi;
         addMidiItems (midi, *p);
         m.addSeparator();
@@ -1152,6 +1188,7 @@ static void showContextMenu (juce::Component& c, int learnIdx)
     m.showMenuAsync (juce::PopupMenu::Options(), [sp, p] (int r)
     {
         if (sp == nullptr) return;
+        if (r == 2) { if (auto* ed = sp->findParentComponentOfClass<ImpulseEditor>()) ed->openColourPicker (sp.getComponent()); return; }
         if (! handleLearnChoice (r, p)) handleSizeChoice (r, sp.getComponent());
     });
 }
@@ -1171,6 +1208,8 @@ static void showGearMenu (juce::Component& c)
     m.addItem (1, "Normalize IRs (level match, TONE3000 law)", true, norm);
     for (int i = 0; i < 7; ++i) lowM.addItem (10 + i, i == 0 ? juce::String ("Off") : juce::String (lows[i]) + " Hz", true, std::abs (low - (float) lows[i]) < 1.0f);
     for (int i = 0; i < 7; ++i) highM.addItem (20 + i, i == 0 ? juce::String ("Off") : juce::String (highs[i] / 1000.0, 1).replace (".0", "") + " kHz", true, std::abs (high - (float) highs[i]) < 10.0f);
+    m.addItem (2, "Colour...");
+    m.addSeparator();
     m.addSubMenu ("Low cut", lowM);
     m.addSubMenu ("High cut", highM);
     m.addSeparator();
@@ -1186,7 +1225,8 @@ static void showGearMenu (juce::Component& c)
         {
             if (auto* prm = p->apvts.getParameter (id)) prm->setValueNotifyingHost (prm->convertTo0to1 (v));
         };
-        if (r == 1) set ("normalize", p->apvts.getRawParameterValue ("normalize")->load() > 0.5f ? 0.0f : 1.0f);
+        if (r == 2) { if (auto* ed = sp->findParentComponentOfClass<ImpulseEditor>()) ed->openColourPicker (sp.getComponent()); }
+        else if (r == 1) set ("normalize", p->apvts.getRawParameterValue ("normalize")->load() > 0.5f ? 0.0f : 1.0f);
         else if (r >= 10 && r < 17) set ("lowcut", (float) lows[r - 10]);
         else if (r >= 20 && r < 27) set ("highcut", (float) highs[r - 20]);
         else if (! handleLearnChoice (r, p)) handleSizeChoice (r, sp.getComponent());

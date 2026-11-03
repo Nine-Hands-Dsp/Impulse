@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "ColourPicker.h"
 
 namespace
 {
@@ -170,6 +171,7 @@ ImpulseProcessor::ImpulseProcessor()
     resetMidiMap();
     lastNormalize = pNormalize->load() > 0.5f;
     lastFolder = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+    accentColour = ImpulseSettings::accent (JucePlugin_Name);   // derniere couleur choisie
     presetSnapshot = snapshotString();
     startTimerHz (60);   // anti-gel v2 : aucun appel a l'hote depuis le thread audio
 }
@@ -803,6 +805,7 @@ void ImpulseProcessor::getStateInformation (juce::MemoryBlock& dest)
     xml->setAttribute ("preset", presetName);
     xml->setAttribute ("snap", presetSnapshot);
     xml->setAttribute ("uiScale", uiScaleIdx.load());
+    xml->setAttribute ("accent", juce::String::toHexString ((juce::int64) accentColour.load()));
     xml->setAttribute ("lastFolder", lastFolder.getFullPathName());
     copyXmlToBinary (*xml, dest);
 }
@@ -815,6 +818,7 @@ void ImpulseProcessor::setStateInformation (const void* data, int size)
     presetName = xml->getStringAttribute ("preset");
     presetSnapshot = xml->hasAttribute ("snap") ? xml->getStringAttribute ("snap") : snapshotString();
     uiScaleIdx = juce::jlimit (-1, 2, xml->getIntAttribute ("uiScale", -1));
+    if (xml->hasAttribute ("accent")) accentColour = 0xff000000u | (juce::uint32) xml->getStringAttribute ("accent").getHexValue64();
     const juce::File lf (xml->getStringAttribute ("lastFolder"));
     if (lf.isDirectory()) lastFolder = lf;
     presetVersion++;
