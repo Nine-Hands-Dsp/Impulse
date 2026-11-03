@@ -59,8 +59,8 @@ namespace
     const juce::Rectangle<float> rName (21, 56, 211, 51), rFolder (239, 57, 51, 50), rPrev (296, 57, 40, 50), rNext (341, 57, 40, 50);
     const juce::Rectangle<float> rMute (303, 134, 26, 22), rPhase (341, 134, 26, 22);
     constexpr float kFaderX = 334.5f, kFaderTop = 170.0f, kFaderBot = 305.5f, kTickLabelX = 354.0f;
-    constexpr float kKnobX = 443.5f, kKnobR = 26.0f;
-    const float kKnobY[3] = { 100.0f, 195.5f, 290.0f }, kLabelY[3] = { 60.0f, 155.0f, 251.0f };
+    constexpr float kKnobX = 443.5f, kKnobR = 24.0f;
+    const float kKnobY[3] = { 94.25f, 184.75f, 274.25f }, kLabelY[3] = { 56.5f, 146.5f, 237.5f };
     const char* kFaderTicks[10] = { "12", "6", "0", "6", "12", "18", "36", "45", "60", "" };
     const juce::Rectangle<float> rPreset (568, 10, 226, 30), rSave (802, 10, 30, 30), rGear (840, 10, 30, 30);
     const juce::Rectangle<float> rStatus (300, 13, 250, 22);
@@ -166,7 +166,7 @@ public:
         g.fillEllipse (dot.x - 2.2f, dot.y - 2.2f, 4.4f, 4.4f);
         // valeur au centre
         g.setColour (juce::Colours::white);
-        g.setFont (fBold (22.0f));
+        g.setFont (fBold (21.0f));
         g.drawText (juce::String ((int) std::lround (value())), juce::Rectangle<float> (c.x - 26, c.y - 13, 52, 26), juce::Justification::centred);
         if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat(), 6.0f);
     }
@@ -604,13 +604,6 @@ public:
         g.fillRoundedRectangle (rPreset, 3.0f);
         drawButtonBg (g, rSave, false, false);
         drawButtonBg (g, rGear, false, false);
-        if (logo.isValid())
-        {
-            const float h = 9.5f, w = h * (float) logo.getWidth() / (float) logo.getHeight();
-            g.setOpacity (0.42f);
-            g.drawImage (logo, juce::Rectangle<float> (150.0f, 24.5f - h * 0.5f, w, h));
-            g.setOpacity (1.0f);
-        }
         g.setColour (juce::Colours::black.withAlpha (0.35f));
         g.drawLine (48.0f, 10.0f, 48.0f, 39.0f, 1.0f);
 
@@ -626,10 +619,17 @@ public:
             g.drawText (names[i], juce::Rectangle<float> (kKnobX - 60, kLabelY[i] - 9, 120, 18), juce::Justification::centred);
         }
         g.setFont (fSemi (12.0f));
-        g.drawText ("ir a", juce::Rectangle<float> (kKnobX - 38, 121, 30, 16), juce::Justification::centred);
-        g.drawText ("ir b", juce::Rectangle<float> (kKnobX + 8, 121, 30, 16), juce::Justification::centred);
-        g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 217, 30, 16), juce::Justification::centred);
-        g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 311, 30, 16), juce::Justification::centred);
+        g.drawText ("ir a", juce::Rectangle<float> (kKnobX - 38, 114, 30, 16), juce::Justification::centred);
+        g.drawText ("ir b", juce::Rectangle<float> (kKnobX + 8, 114, 30, 16), juce::Justification::centred);
+        g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 204.75f, 30, 16), juce::Justification::centred);
+        g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 293.75f, 30, 16), juce::Justification::centred);
+        if (logo.isValid())
+        {
+            const float h = 6.65f, w = h * (float) logo.getWidth() / (float) logo.getHeight();
+            g.setOpacity (0.55f);
+            g.drawImage (logo, juce::Rectangle<float> (kKnobX - w * 0.5f, 323.5f - h * 0.5f, w, h));   // bas de la colonne centrale
+            g.setOpacity (1.0f);
+        }
 
         for (int s = 0; s < 2; ++s)
         {
