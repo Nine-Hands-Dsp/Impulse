@@ -1,4 +1,4 @@
-# IMPULSE (Studio Wiga) - notice PDF bilingue (anglais puis francais).
+# IMPULSE (NINE HANDS | DSP) - notice PDF bilingue (anglais puis francais).
 # Usage : python3 tools/manual.py [fichier PDF de sortie]
 # Version lue dans CMakeLists.txt. Illustrations : tools/manual_assets/ (rendus reels de l'interface, outil tools/ImpulseTool).
 import os, re, sys
@@ -38,8 +38,8 @@ def content(lang):
           ("p", t("Download <b>Impulse-VST3-macOS</b> (universal: Apple Silicon and Intel, macOS 10.13+), unzip it (it contains another zip), unzip again and copy <b>Impulse.vst3</b> into <b>~/Library/Audio/Plug-Ins/VST3/</b>. The plugin is not notarized: run once in Terminal <b>xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Impulse.vst3</b>",
                   "Téléchargez <b>Impulse-VST3-macOS</b> (universel : Apple Silicon et Intel, macOS 10.13+), décompressez-le (il contient un autre zip), décompressez encore et copiez <b>Impulse.vst3</b> dans <b>~/Library/Audio/Plug-Ins/VST3/</b>. Le plugin n'est pas notarié : lancez une fois dans le Terminal <b>xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Impulse.vst3</b>")),
           ("h2", "Reaper"),
-          ("p", t("Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Impulse is listed as <b>Impulse (Studio Wiga)</b>. For MIDI, the track must send MIDI to the plugin: record-arm it with your MIDI controller as input, or use a MIDI send.",
-                  "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Impulse apparaît sous le nom <b>Impulse (Studio Wiga)</b>. Pour le MIDI, la piste doit envoyer le MIDI au plugin : armez-la avec votre contrôleur MIDI en entrée, ou utilisez un envoi MIDI.")),
+          ("p", t("Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Impulse is listed as <b>Impulse (NINE HANDS | DSP)</b>. For MIDI, the track must send MIDI to the plugin: record-arm it with your MIDI controller as input, or use a MIDI send.",
+                  "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Impulse apparaît sous le nom <b>Impulse (NINE HANDS | DSP)</b>. Pour le MIDI, la piste doit envoyer le MIDI au plugin : armez-la avec votre contrôleur MIDI en entrée, ou utilisez un envoi MIDI.")),
           ("pb",)]
     # 3. Overview
     rows = [["#", t("Control", "Commande"), t("Role", "Rôle")],
@@ -95,8 +95,8 @@ def content(lang):
                   "Glisser vers le haut / bas (Maj : fin), molette, double-clic : valeur par défaut. La valeur s'affiche dans le potard et dans la ligne d'état."))]
     # 5. Settings
     b += [("h1", t("5. Menu (right-click or gear button)", "5. Menu (clic droit ou roue dentée)")),
-          ("p", t("A right-click anywhere opens the same menu as on the other Studio Wiga plugins; the gear button opens it too, without the Presets sub-menu. On a control, its <b>MIDI Learn</b> and <b>Clear MIDI</b> come first; on a slot (name or waveform), the IR actions come first (Load IR, previous / next IR in folder, Show in folder, Clear, gain applied). Then: <b>Plugin size</b>, <b>Presets</b>, <b>Settings</b>, <b>MIDI</b> and the plugin version. The <b>Settings</b> sub-menu contains:",
-                  "Un clic droit n'importe où ouvre le même menu que sur les autres plugins Studio Wiga ; la roue dentée l'ouvre aussi, sans le sous-menu Presets. Sur une commande, son <b>MIDI Learn</b> et <b>Clear MIDI</b> viennent en premier ; sur un slot (nom ou forme d'onde), les actions de l'IR viennent en premier (Load IR, IR précédente / suivante du dossier, Show in folder, Clear, gain appliqué). Ensuite : <b>Plugin size</b>, <b>Presets</b>, <b>Settings</b>, <b>MIDI</b> et la version du plugin. Le sous-menu <b>Settings</b> contient :")),
+          ("p", t("A right-click anywhere opens the same menu as on the other NINE HANDS | DSP plugins; the gear button opens it too, without the Presets sub-menu. On a control, its <b>MIDI Learn</b> and <b>Clear MIDI</b> come first; on a slot (name or waveform), the IR actions come first (Load IR, previous / next IR in folder, Show in folder, Clear, gain applied). Then: <b>Plugin size</b>, <b>Presets</b>, <b>Settings</b>, <b>MIDI</b> and the plugin version. The <b>Settings</b> sub-menu contains:",
+                  "Un clic droit n'importe où ouvre le même menu que sur les autres plugins NINE HANDS | DSP ; la roue dentée l'ouvre aussi, sans le sous-menu Presets. Sur une commande, son <b>MIDI Learn</b> et <b>Clear MIDI</b> viennent en premier ; sur un slot (nom ou forme d'onde), les actions de l'IR viennent en premier (Load IR, IR précédente / suivante du dossier, Show in folder, Clear, gain appliqué). Ensuite : <b>Plugin size</b>, <b>Presets</b>, <b>Settings</b>, <b>MIDI</b> et la version du plugin. Le sous-menu <b>Settings</b> contient :")),
           ("table", [[t("Item", "Élément"), t("Role", "Rôle")],
                      ["Colour...", t("Colour picker (section 7)", "Nuancier (section 7)")],
                      ["IR folder", t("Default IR folder, shared by all Impulse windows: the folder button of an empty slot opens there, and the arrows of an empty slot browse it. Choose default IR folder..., Show default IR folder, or No default folder (use the last folder used).",
@@ -146,13 +146,13 @@ def content(lang):
           ("p", t("<b>Export</b> writes the current setting, IRs included, to a .impulse file wherever you want (to back it up or send it to another computer). <b>Import</b> loads a .impulse file and copies it into your presets list; if the name is already taken, a number is added instead of overwriting.",
                   "<b>Export</b> écrit le réglage en cours, IR comprises, dans un fichier .impulse où vous voulez (sauvegarde, autre ordinateur). <b>Import</b> charge un fichier .impulse et le copie dans votre liste de presets ; si le nom existe déjà, un numéro est ajouté au lieu d'écraser.")),
           ("table", [["", t("Presets folder", "Dossier des presets")],
-                     ["Windows", "%APPDATA%\\Studio Wiga\\Impulse\\Presets\\*.impulse"],
-                     ["macOS", "~/Library/Application Support/Studio Wiga/Impulse/Presets/*.impulse"]],
+                     ["Windows", "%APPDATA%\\NINE HANDS DSP\\Impulse\\Presets\\*.impulse"],
+                     ["macOS", "~/Library/Application Support/NINE HANDS DSP/Impulse/Presets/*.impulse"]],
            [24, None])]
     # 9. Tips
     b += [("h1", t("9. Tips", "9. Conseils d'utilisation")),
-          ("bullets", [t("<b>Chain in Reaper</b>: guitar &gt; your Studio Wiga pedals &gt; amp (Genome with its cab off, a NAM capture, a preamp) &gt; <b>Impulse</b> &gt; reverb / delay. An IR loader always goes after the amp.",
-                         "<b>Chaîne dans Reaper</b> : guitare &gt; vos pédales Studio Wiga &gt; ampli (Genome baffle désactivé, capture NAM, préampli) &gt; <b>Impulse</b> &gt; reverb / delay. Un chargeur d'IR se place toujours après l'ampli."),
+          ("bullets", [t("<b>Chain in Reaper</b>: guitar &gt; your NINE HANDS | DSP pedals &gt; amp (Genome with its cab off, a NAM capture, a preamp) &gt; <b>Impulse</b> &gt; reverb / delay. An IR loader always goes after the amp.",
+                         "<b>Chaîne dans Reaper</b> : guitare &gt; vos pédales NINE HANDS | DSP &gt; ampli (Genome baffle désactivé, capture NAM, préampli) &gt; <b>Impulse</b> &gt; reverb / delay. Un chargeur d'IR se place toujours après l'ampli."),
                        t("<b>Two mics</b>: load the SM57 and the ribbon (or condenser) of the same pack in A and B, MIX at 0, then turn VARIPHI slowly; if the blend sounds thin, try \u00d8 on B.",
                          "<b>Deux micros</b> : chargez le SM57 et le ruban (ou statique) du même pack dans A et B, MIX à 0, puis tournez VARIPHI lentement ; si le mélange sonne maigre, essayez \u00d8 sur B."),
                        t("<b>7-string in G and bass</b>: keep Low cut on Off or 40 Hz to keep the low end; a 60-80 Hz low cut tightens a downtuned guitar without losing its weight. A 1x15 or 8x10 IR in one slot and a 4x12 in the other makes a good bass blend.",
@@ -180,4 +180,4 @@ def content(lang):
     return b
 
 
-L.build(OUT, "Impulse", VERSION, "#2AA4DC", "I M P U L S E", TEXTS, content)
+L.build(OUT, "Impulse", VERSION, "#2AA4DC", "impulse_logo_blanc.png", TEXTS, content)

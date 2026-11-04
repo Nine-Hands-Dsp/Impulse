@@ -1,4 +1,4 @@
-# Impulse (Studio Wiga)
+# Impulse (NINE HANDS | DSP)
 
 Chargeur de réponses impulsionnelles (IR) double **A / B** pour amplis guitare et basse, VST3 Windows et macOS (AU en plus sur macOS).
 
@@ -12,7 +12,7 @@ Chargeur de réponses impulsionnelles (IR) double **A / B** pour amplis guitare 
 - **Couleur** (roue dentée > Colour..., ou clic droit sur le fond) : nuancier d'Octopus (couleurs rapides, MY COLOURS, teinte / saturation / luminosité, code hexadécimal à taper, Default = bleu d'origine). La couleur est enregistrée dans le projet et reprise par les nouvelles fenêtres.
 - **Dossier des IR par défaut** (roue dentée > IR folder) : le bouton dossier et les flèches d'un slot vide partent de ce dossier ; un slot chargé utilise le dossier de son IR.
 - Roue dentée : normalisation, coupe-bas, coupe-haut, MIDI, taille de la fenêtre.
-- Presets (`%APPDATA%\Studio Wiga\Impulse\Presets` / `~/Library/Application Support/Studio Wiga/Impulse/Presets`) : les IR sont copiées dans le preset et dans le projet (≤ 4 s), le son revient même si le fichier a été déplacé.
+- Presets (`%APPDATA%\NINE HANDS DSP\Impulse\Presets` / `~/Library/Application Support/NINE HANDS DSP/Impulse/Presets`) : les IR sont copiées dans le preset et dans le projet (≤ 4 s), le son revient même si le fichier a été déplacé.
 - MIDI Learn sur toutes les commandes (clic droit), aucun CC par défaut ; footswitch à accrochage ou momentané ; course de pédale apprise automatiquement, CC 14 bits.
 
 ## Moteur audio (d'après NAM et TONE3000, licences MIT)
@@ -31,3 +31,5 @@ GitHub Actions (`.github/workflows/build.yml`) : artefacts **Impulse-VST3-Window
 Outil Linux de vérification (captures et tests audio hors ligne) : `cmake -B build -DIMPULSE_TOOLS=ON`.
 
 Polices Inter (SIL Open Font License) incluses.
+
+La marque s'appelait Studio Wiga jusqu'en novembre 2026 : au premier lancement, les réglages et presets de l'ancien dossier « Studio Wiga/Impulse » sont recopiés dans « NINE HANDS DSP/Impulse ».

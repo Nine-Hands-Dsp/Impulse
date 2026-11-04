@@ -853,8 +853,7 @@ bool ImpulseProcessor::isPresetDirty() const
 
 juce::File ImpulseProcessor::presetFolder()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-               .getChildFile ("Studio Wiga").getChildFile ("Impulse").getChildFile ("Presets");
+    return WigaWindowSize::folder ("Impulse").getChildFile ("Presets");   // NINE HANDS DSP/Impulse/Presets
 }
 
 juce::StringArray ImpulseProcessor::getPresetNames() const

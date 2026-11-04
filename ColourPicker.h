@@ -14,7 +14,7 @@ namespace ImpulseSettings
     {
         const auto f = WigaWindowSize::file (plugin);
         if (f.existsAsFile()) if (auto x = juce::XmlDocument::parse (f)) return x;
-        return std::make_unique<juce::XmlElement> ("StudioWigaSettings");
+        return std::make_unique<juce::XmlElement> ("NineHandsSettings");
     }
     inline void save (const juce::String& plugin, const juce::XmlElement& x)
     {

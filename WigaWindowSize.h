@@ -1,19 +1,27 @@
 #pragma once
 #include <juce_core/juce_core.h>
 
-// Studio Wiga : taille par defaut des nouvelles fenetres du plugin, commune a toutes ses instances
-// (choisie par clic droit > Plugin size > Default size (new windows), comme dans Octopus).
-// Reglage enregistre dans le dossier de l'utilisateur :
-//   Windows : %APPDATA%\Studio Wiga\<Plugin>\settings.xml
-//   macOS   : ~/Library/Application Support/Studio Wiga/<Plugin>/settings.xml  (userApplicationDataDirectory)
-// Indice 0 = taille par defaut d'origine (« 60 % »), puis les tailles suivantes du menu.
+// NINE HANDS | DSP : dossier de l'utilisateur du plugin (taille par defaut des nouvelles fenetres, couleur,
+// dossier des IR, presets), commun a toutes ses instances :
+//   Windows : %APPDATA%\NINE HANDS DSP\<Plugin>\
+//   macOS   : ~/Library/Application Support/NINE HANDS DSP/<Plugin>/
+// La marque s'appelait Studio Wiga : au premier lancement, l'ancien dossier « Studio Wiga/<Plugin> » est recopie
+// (reglages et presets conserves).
 namespace WigaWindowSize
 {
-    inline juce::File file (const juce::String& plugin)
+    inline juce::File folder (const juce::String& plugin)
     {
-        return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-                   .getChildFile ("Studio Wiga").getChildFile (plugin).getChildFile ("settings.xml");
+        const auto base = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
+        const auto dir = base.getChildFile ("NINE HANDS DSP").getChildFile (plugin);
+        if (! dir.isDirectory())
+        {
+            const auto old = base.getChildFile ("Studio Wiga").getChildFile (plugin);
+            if (old.isDirectory()) old.copyDirectoryTo (dir);
+        }
+        return dir;
     }
+
+    inline juce::File file (const juce::String& plugin) { return folder (plugin).getChildFile ("settings.xml"); }
 
     // indice de la taille par defaut (0 si rien n'a ete choisi ou fichier illisible)
     inline int defaultIndex (const juce::String& plugin, int numSizes)
@@ -28,7 +36,7 @@ namespace WigaWindowSize
     inline void setDefaultIndex (const juce::String& plugin, int idx)
     {
         const auto f = file (plugin);
-        juce::XmlElement x ("StudioWigaSettings");
+        juce::XmlElement x ("NineHandsSettings");
         if (f.existsAsFile())
             if (auto old = juce::XmlDocument::parse (f))
                 x = *old;

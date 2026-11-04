@@ -631,13 +631,11 @@ public:
         drawButtonBg (g, rGear, false, false);
         g.setColour (juce::Colours::black.withAlpha (0.35f));
         g.drawLine (48.0f, 10.0f, 48.0f, 39.0f, 1.0f);
-        if (title.isValid())
+        if (title != nullptr)
         {
-            // logo IMPULSE a la place du titre texte
-            const float h = 24.37f, w = h * (float) title.getWidth() / (float) title.getHeight();
-            g.setOpacity (0.92f);
-            g.drawImage (title, juce::Rectangle<float> (60.0f, 24.5f - h * 0.5f, w, h));
-            g.setOpacity (1.0f);
+            // logo IMPULSE (vectoriel) a la place du titre texte
+            const float h = 24.37f, w = h * kTitleAspect;
+            title->drawWithin (g, juce::Rectangle<float> (60.0f, 24.5f - h * 0.5f, w, h), juce::RectanglePlacement::centred, 0.92f);
         }
 
         // colonne centrale
@@ -656,12 +654,11 @@ public:
         g.drawText ("ir b", juce::Rectangle<float> (kKnobX + 8, 114, 30, 16), juce::Justification::centred);
         g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 204.75f, 30, 16), juce::Justification::centred);
         g.drawText ("%", juce::Rectangle<float> (kKnobX - 15, 293.75f, 30, 16), juce::Justification::centred);
-        if (logo.isValid())
+        if (logo != nullptr)
         {
-            const float h = 6.65f, w = h * (float) logo.getWidth() / (float) logo.getHeight();
-            g.setOpacity (0.55f);
-            g.drawImage (logo, juce::Rectangle<float> (kKnobX - w * 0.5f, 323.5f - h * 0.5f, w, h));   // bas de la colonne centrale
-            g.setOpacity (1.0f);
+            // logo NINE HANDS | DSP (vectoriel) en bas de la colonne centrale
+            const float w = 90.0f, h = w / kBrandAspect;
+            logo->drawWithin (g, juce::Rectangle<float> (kKnobX - w * 0.5f, 323.5f - h * 0.5f, w, h), juce::RectanglePlacement::centred, 0.6f);
         }
 
         for (int s = 0; s < 2; ++s)
@@ -905,7 +902,7 @@ public:
         midi.addItem (911, "Buttons and IR / preset steps also learn a MIDI note", false);
         m.addSubMenu ("MIDI", midi);
         m.addSeparator();
-        m.addItem (999, "Impulse IR loader v" + juce::String (JucePlugin_VersionString) + " - STUDIO WIGA", false);
+        m.addItem (999, "Impulse IR loader v" + juce::String (JucePlugin_VersionString) + " - NINE HANDS | DSP", false);
 
         juce::Component::SafePointer<ImpulseContent> sp (this);
         juce::Component::SafePointer<juce::Component> tp (target);
@@ -1174,8 +1171,10 @@ private:
     juce::uint32 statusUntil = 0, learnMsgUntil = 0;
     int drawnLearn = -1, dropHover = -1;
     bool drawnBlink = false;
-    juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::logo_studio_wiga_blanc_png, BinaryData::logo_studio_wiga_blanc_pngSize);
-    juce::Image title = juce::ImageCache::getFromMemory (BinaryData::logo_impulse_png, BinaryData::logo_impulse_pngSize);
+    // logos vectoriels (SVG fournis) : nets a toutes les tailles
+    static constexpr float kTitleAspect = 2505.0f / 735.0f, kBrandAspect = 2602.0f / 244.0f;
+    std::unique_ptr<juce::Drawable> logo  = juce::Drawable::createFromImageData (BinaryData::nine_hands_logo_blanc_svg, BinaryData::nine_hands_logo_blanc_svgSize);
+    std::unique_ptr<juce::Drawable> title = juce::Drawable::createFromImageData (BinaryData::impulse_logo_blanc_svg, BinaryData::impulse_logo_blanc_svgSize);
 
     // anti-gel v2
     juce::Image bgCache;

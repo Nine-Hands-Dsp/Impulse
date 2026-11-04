@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 endif()
 
-project(WigaImpulse VERSION 1.2.4)
+project(WigaImpulse VERSION 1.3.0)
 
 option(IMPULSE_TOOLS "Build the Linux render / test tools" OFF)
 
@@ -21,13 +21,13 @@ else()
   FetchContent_MakeAvailable(JUCE)
 endif()
 
-# polices Inter (SIL OFL) et logo Studio Wiga integres au plugin
+# polices Inter (SIL OFL), logos IMPULSE et NINE HANDS | DSP (vectoriels) integres au plugin
 juce_add_binary_data(ImpulseAssets SOURCES
   assets/Inter-SemiBold.otf
   assets/Inter-Bold.otf
   assets/Inter-Medium.otf
-  assets/logo_studio_wiga_blanc.png
-  assets/logo_impulse.png)
+  assets/nine_hands_logo_blanc.svg
+  assets/impulse_logo_blanc.svg)
 
 if(APPLE)
   set(IMPULSE_FORMATS VST3 AU)
@@ -36,7 +36,7 @@ else()
 endif()
 
 juce_add_plugin(Impulse
-  COMPANY_NAME "Studio Wiga"
+  COMPANY_NAME "NINE HANDS | DSP"
   PLUGIN_MANUFACTURER_CODE Wiga
   PLUGIN_CODE WgIr
   FORMATS ${IMPULSE_FORMATS}

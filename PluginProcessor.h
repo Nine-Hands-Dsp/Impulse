@@ -5,7 +5,7 @@
 #include <vector>
 
 // ============================================================================
-// IMPULSE (Studio Wiga) : chargeur de reponses impulsionnelles (IR) double A / B
+// IMPULSE (NINE HANDS | DSP) : chargeur de reponses impulsionnelles (IR) double A / B
 // pour amplis guitare et basse.
 //
 // Moteur repris des references open source :
