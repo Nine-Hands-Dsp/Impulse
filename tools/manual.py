@@ -32,8 +32,8 @@ def content(lang):
     # 2. Installation
     b += [("h1", "2. Installation"),
           ("h2", "Windows"),
-          ("p", t("Download the <b>Impulse-VST3-Windows</b> artifact (GitHub Actions, repository studiowiga/Impulse), unzip it and copy <b>Impulse.vst3</b> into <b>C:\\Program Files\\Common Files\\VST3\\</b>.",
-                  "Téléchargez l'artefact <b>Impulse-VST3-Windows</b> (GitHub Actions, dépôt studiowiga/Impulse), décompressez-le et copiez <b>Impulse.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3\\</b>.")),
+          ("p", t("Download the <b>Impulse-VST3-Windows</b> artifact (GitHub Actions, repository Nine-Hands-Dsp/Impulse), unzip it and copy <b>Impulse.vst3</b> into <b>C:\\Program Files\\Common Files\\VST3\\</b>.",
+                  "Téléchargez l'artefact <b>Impulse-VST3-Windows</b> (GitHub Actions, dépôt Nine-Hands-Dsp/Impulse), décompressez-le et copiez <b>Impulse.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3\\</b>.")),
           ("h2", "macOS"),
           ("p", t("Download <b>Impulse-VST3-macOS</b> (universal: Apple Silicon and Intel, macOS 10.13+), unzip it (it contains another zip), unzip again and copy <b>Impulse.vst3</b> into <b>~/Library/Audio/Plug-Ins/VST3/</b>. The plugin is not notarized: run once in Terminal <b>xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Impulse.vst3</b>",
                   "Téléchargez <b>Impulse-VST3-macOS</b> (universel : Apple Silicon et Intel, macOS 10.13+), décompressez-le (il contient un autre zip), décompressez encore et copiez <b>Impulse.vst3</b> dans <b>~/Library/Audio/Plug-Ins/VST3/</b>. Le plugin n'est pas notarié : lancez une fois dans le Terminal <b>xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Impulse.vst3</b>")),

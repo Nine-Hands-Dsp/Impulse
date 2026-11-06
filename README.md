@@ -32,4 +32,4 @@ Outil Linux de vérification (captures et tests audio hors ligne) : `cmake -B bu
 
 Polices Inter (SIL Open Font License) incluses.
 
-La marque s'appelait Studio Wiga jusqu'en novembre 2026 : au premier lancement, les réglages et presets de l'ancien dossier « Studio Wiga/Impulse » sont recopiés dans « NINE HANDS DSP/Impulse ».
+La marque s'appelait NINE HANDS | DSP jusqu'en novembre 2026 : au premier lancement, les réglages et presets de l'ancien dossier « NINE HANDS | DSP/Impulse » sont recopiés dans « NINE HANDS DSP/Impulse ».

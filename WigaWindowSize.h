@@ -1,11 +1,12 @@
 #pragma once
 #include <juce_core/juce_core.h>
+#include "NineHandsFolder.h"
 
 // NINE HANDS | DSP : dossier de l'utilisateur du plugin (taille par defaut des nouvelles fenetres, couleur,
 // dossier des IR, presets), commun a toutes ses instances :
 //   Windows : %APPDATA%\NINE HANDS DSP\<Plugin>\
 //   macOS   : ~/Library/Application Support/NINE HANDS DSP/<Plugin>/
-// La marque s'appelait Studio Wiga : au premier lancement, l'ancien dossier « Studio Wiga/<Plugin> » est recopie
+// La marque s'appelait NINE HANDS | DSP : au premier lancement, l'ancien dossier « NINE HANDS | DSP/<Plugin> » est recopie
 // (reglages et presets conserves).
 namespace WigaWindowSize
 {
@@ -15,7 +16,7 @@ namespace WigaWindowSize
         const auto dir = base.getChildFile ("NINE HANDS DSP").getChildFile (plugin);
         if (! dir.isDirectory())
         {
-            const auto old = base.getChildFile ("Studio Wiga").getChildFile (plugin);
+            const auto old = base.getChildFile (nhd::folderName()).getChildFile (plugin);
             if (old.isDirectory()) old.copyDirectoryTo (dir);
         }
         return dir;
