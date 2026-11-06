@@ -30,9 +30,11 @@ int main (int argc, char** argv)
         proc.prepareToPlay (48000.0, 256);
         if (arg (10).isNotEmpty()) proc.accentColour = 0xff000000u | (juce::uint32) arg (10).getHexValue64();
         std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
+        // fenetre a la taille demandee (le fond est calcule a cette taille, comme dans l'hote), capture a 1:1
+        ed->setSize ((int) std::lround (ed->getWidth() * scale), (int) std::lround (ed->getHeight() * scale));
         if (arg (11) == "picker") if (auto* ie = dynamic_cast<ImpulseEditor*> (ed.get())) ie->openColourPicker (nullptr);
-        juce::MessageManager::getInstance()->runDispatchLoopUntil (400);   // timer : cache du fond
-        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, scale);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (600);   // timer : cache du fond
+        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
         juce::File out (arg (2));
         out.deleteFile();
         juce::FileOutputStream os (out);
