@@ -6,12 +6,12 @@
 // ============================================================================
 // IMPULSE - interface « metal brosse » (d'apres la maquette fournie, nov. 2026)
 // Tout est dessine dans le repere de la maquette (1876 x 737 points), puis mis a l'echelle de la fenetre :
-// net a toutes les tailles et a tous les zooms Windows / Retina. Fenetre par defaut (« 60 % ») : 887 x 348.
+// net a toutes les tailles et a tous les zooms Windows / Retina. Fenetre par defaut (« 60 % ») : 760 x 299 (meme largeur qu'Ampire).
 // ============================================================================
 namespace
 {
     constexpr int kW = 1876, kH = 737;          // repere de dessin (pixels de la maquette)
-    constexpr int kWin = 887, kWinH = 348;      // taille de la fenetre « 60 % »
+    constexpr int kWin = 760, kWinH = 299;      // taille de la fenetre « 60 % » (meme largeur qu'Ampire)
     const float kScales[3] = { 1.0f, 1.25f, 5.0f / 3.0f };   // 60 % (defaut) / 75 % / 100 %
 
     namespace col
@@ -1008,7 +1008,7 @@ public:
 
         juce::Component::SafePointer<ImpulseContent> sp (this);
         juce::Component::SafePointer<juce::Component> tp (target);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (target),
+        m.showMenuAsync (menuOptions (juce::Rectangle<int> (juce::Desktop::getMousePosition(), juce::Desktop::getMousePosition()).withSize (1, 1)),
                          [sp, tp, names, slot, slotPath] (int r)
         {
             if (sp == nullptr || r == 0) return;
@@ -1088,8 +1088,16 @@ private:
         juce::PopupMenu m;
         const auto names = addPresetItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (localAreaToGlobal (toInt (rPreset))),
+        m.showMenuAsync (menuOptions (localAreaToGlobal (toInt (rPreset))),
                          [sp, names] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, names); });
+    }
+
+    // menus a la taille normale, comme sur toutes les pedales : l'echelle vient de la fenetre du plugin
+    // (pas du contenu reduit par setTransform), la position reste celle du clic / du bouton
+    juce::PopupMenu::Options menuOptions (juce::Rectangle<int> screenArea)
+    {
+        juce::Component* ed = getParentComponent();
+        return juce::PopupMenu::Options().withTargetComponent (ed != nullptr ? ed : this).withTargetScreenArea (screenArea);
     }
 
     // disquette : enregistrer / exporter / importer
@@ -1098,7 +1106,7 @@ private:
         juce::PopupMenu m;
         addPresetFileItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&save),
+        m.showMenuAsync (menuOptions (save.getScreenBounds()),
                          [sp] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, {}); });
     }
 

@@ -43,6 +43,17 @@ int main (int argc, char** argv)
         ed.reset();
         return 0;
     }
+    if (mode == "menuscale")
+    {
+        // echelle des menus clic droit : avant (cible dans le contenu reduit) / maintenant (fenetre du plugin)
+        std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
+        auto* inner = ed->getChildComponent (0) != nullptr && ed->getChildComponent (0)->getNumChildComponents() > 0
+                        ? ed->getChildComponent (0)->getChildComponent (0) : nullptr;
+        std::printf ("fenetre %d px : echelle menu avant = %.2f, maintenant = %.2f\n", ed->getWidth(),
+                     inner != nullptr ? juce::Component::getApproximateScaleFactorForComponent (inner) : -1.0f,
+                     juce::Component::getApproximateScaleFactorForComponent (ed.get()));
+        return 0;
+    }
     if (mode == "presettest")
     {
         proc.loadIR (0, juce::File (arg (2)));
