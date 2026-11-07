@@ -6,7 +6,7 @@
 // dossier des IR, presets), commun a toutes ses instances :
 //   Windows : %APPDATA%\NINE HANDS DSP\<Plugin>\
 //   macOS   : ~/Library/Application Support/NINE HANDS DSP/<Plugin>/
-// La marque s'appelait NINE HANDS | DSP : au premier lancement, l'ancien dossier « NINE HANDS | DSP/<Plugin> » est recopie
+// La marque s'appelait Studio Wiga : au premier lancement, l'ancien dossier « Studio Wiga/<Plugin> » est recopie
 // (reglages et presets conserves).
 namespace WigaWindowSize
 {
