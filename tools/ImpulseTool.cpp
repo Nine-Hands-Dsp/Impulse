@@ -98,6 +98,36 @@ int main (int argc, char** argv)
         std::printf ("typed #172633 then OK: %08x\n", (unsigned) proc.accentColour.load());
         return ok1 && proc.accentColour.load() == 0xff172633 ? 0 : 5;
     }
+    if (mode == "swap")
+    {
+        // swap <out.wav> <rate> <block> <ir1> <ir2> [mix] : bruit blanc, IR1 sur A, puis chargement d'IR2 sur A en cours de lecture
+        const double rate = arg (3).getDoubleValue();
+        const int block = arg (4).getIntValue();
+        if (arg (7).isNotEmpty()) setP (proc, "mix", arg (7).getFloatValue());
+        proc.setPlayConfigDetails (2, 2, rate, block);
+        proc.prepareToPlay (rate, block);
+        std::printf ("load 1: %d\n", (int) proc.loadIR (0, juce::File (arg (5))));
+        juce::MidiBuffer midi;
+        const int n = (int) (rate * 4.0);
+        juce::AudioBuffer<float> out (2, n);
+        juce::Random rnd (1);
+        for (int i = 0; i < n; ++i) { const float v = (rnd.nextFloat() * 2.0f - 1.0f) * 0.25f; out.setSample (0, i, v); out.setSample (1, i, v); }
+        for (int pos = 0; pos < n; pos += block)
+        {
+            if (pos >= (int) (rate * 2.0) && pos - block < (int) (rate * 2.0))
+                std::printf ("load 2 at %d: %d\n", pos, (int) proc.loadIR (0, juce::File (arg (6))));
+            const int len = juce::jmin (block, n - pos);
+            juce::AudioBuffer<float> b (out.getArrayOfWritePointers(), 2, pos, len);
+            proc.processBlock (b, midi);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (1);
+            juce::Thread::sleep ((int) (1000.0 * len / rate));
+        }
+        juce::WavAudioFormat wav;
+        juce::File of (arg (2)); of.deleteFile();
+        std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (of), rate, 2, 32, {}, 0));
+        w->writeFromAudioSampleBuffer (out, 0, n);
+        return 0;
+    }
     if (mode == "process")
     {
         juce::AudioFormatManager fm; fm.registerBasicFormats();

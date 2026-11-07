@@ -87,11 +87,105 @@ copy_cols(612, 784, 612, 632, 318, 642)                    # graduations et chif
 copy_cols(1092, 1264, 1092, 1112, 318, 642)                # graduations et chiffres du fader B
 # disquette et roue crantee : le plugin dessine le bouton complet
 
+
+def octopus_frame(out, T):
+    """Contour du boitier repris d'Octopus : jante arrondie (profils mesures sur le fond d'Octopus,
+    design/octopus_bevel.json), coins arrondis, meme taille a l'ecran a la taille par defaut."""
+    import json
+    prof = json.load(open('design/octopus_bevel.json'))
+    H, W = out.shape[:2]
+    s = (W / 887.0) / (2498.0 / 993.0)        # px du fond Impulse par px du fond Octopus (meme taille a l'ecran)
+    SIZE, EXPO = 0.70, 0.70                    # contour 30 % plus fin et 30 % moins expose qu'Octopus
+    s = s * SIZE
+    R = 50.0 * s                               # rayon des coins
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    px, py = xx + 0.5, yy + 0.5
+    cx = np.clip(px, R, W - R); cy = np.clip(py, R, H - R)
+    vx, vy = px - cx, py - cy
+    ln = np.sqrt(vx * vx + vy * vy)
+    inner = np.minimum(np.minimum(px, W - px), np.minimum(py, H - py))
+    d = np.where(ln > 0, R - ln, inner)        # distance au bord, vers l'interieur
+    nx = np.where(ln > 0, vx / np.maximum(ln, 1e-6), 0.0); ny = np.where(ln > 0, vy / np.maximum(ln, 1e-6), 0.0)
+    edge = ln <= 0
+    m = np.minimum(np.minimum(px, W - px), np.minimum(py, H - py))
+    nx = np.where(edge & (m == px), -1.0, nx); nx = np.where(edge & (m == W - px), 1.0, nx)
+    ny = np.where(edge & (m == py), -1.0, ny); ny = np.where(edge & (m == H - py), 1.0, ny)
+    idx = np.clip(d / s, 0, None)
+    def delta(name):
+        v = np.array(prof[name], np.float32)
+        surf = v[30:].mean()
+        dv = v - surf
+        dv[28:] = dv[28:] * np.linspace(1, 0, len(dv) - 28)   # raccord en douceur avec la surface
+        return np.interp(idx, np.arange(len(dv)), dv, right=0.0)
+    wl, wr = np.maximum(-nx, 0) ** 2, np.maximum(nx, 0) ** 2
+    wt, wb = np.maximum(-ny, 0) ** 2, np.maximum(ny, 0) ** 2
+    ws = np.maximum(wl + wr + wt + wb, 1e-6)
+    D = EXPO * (wl * delta('left') + wr * delta('right') + wt * delta('top') + wb * delta('bottom')) / ws
+    # sous la jante : surface de la texture (l'ancien filet et la marge noire disparaissent)
+    b = np.clip((62.0 * SIZE - d) / (14.0 * SIZE), 0, 1)[..., None]
+    base = out * (1 - b) + T * b
+    res = base + D[..., None]
+    a = np.clip(d, 0, 1)[..., None]            # coins : noir hors de la forme, bord lisse
+    res = res * a
+    return np.clip(res, 0, 255)
+
+def apply_texture(img):
+    """Texture metal brosse de l'utilisateur (design/texture_boitier.png) appliquee au boitier
+    (tout sauf les zones creuses des formes d'onde) en gardant biseaux, rainures et ombres d'origine."""
+    from scipy import ndimage as nd
+    O = np.asarray(img).astype(np.float32)
+    H, W = O.shape[:2]
+    k = W / 1876.0
+    # texture : agrandie a 3900 px, faisceau lumineux recentre sur la colonne centrale
+    tex = Image.open('design/texture_boitier.png').convert('RGB').resize((3900, 3900), Image.LANCZOS)
+    x0 = int(round(0.5435 * 3900 - W / 2)); y0 = 195
+    T = np.asarray(tex.crop((x0, y0, x0 + W, y0 + H))).astype(np.float32)
+    # faisceau central attenue : on retire 70 % de la surbrillance au-dessus du niveau des cotes
+    Tg = nd.gaussian_filter(T.mean(axis=2), 40 * k)
+    T = T - (0.70 * np.maximum(Tg - np.percentile(Tg, 5), 0.0))[..., None]
+    # masque du boitier : tout sauf les panneaux A et B
+    # seules les zones creuses sombres (forme d'onde + fader) gardent leur fond ; bord clair inclus, coins arrondis
+    from PIL import ImageDraw
+    mk = Image.new('L', (W, H), 255); dr = ImageDraw.Draw(mk)
+    sx = W / 3500.0
+    for (a0, b0, a1, b1) in ((64, 446, 1471, 1229), (2027, 446, 3436, 1229)):
+        dr.rounded_rectangle((a0 * sx, b0 * sx, a1 * sx, b1 * sx), radius=18 * sx, fill=0)
+    M = np.asarray(mk).astype(np.float32) / 255.0
+    # calculs de lumiere en luminance (pas de derive de couleur) ; pixels colores (icones de la maquette) ignores
+    lum = O.mean(axis=2)
+    sat = (O.max(axis=2) - O.min(axis=2))
+    Wt = M * np.clip(1.0 - (sat - 12.0) / 20.0, 0.0, 1.0)
+    def mblur(a, sig):
+        num = nd.gaussian_filter(a * Wt, sig)
+        den = nd.gaussian_filter(Wt, sig)
+        return num / np.maximum(den, 1e-4)
+    Tl = T.mean(axis=2)
+    sL, sS = 60 * k, 4 * k
+    OL, TL, OS = mblur(lum, sL), mblur(Tl, sL), mblur(lum, sS)
+    # zones de detail (biseaux, aretes, filets) : gardees telles quelles, ramenees a la lumiere de la texture
+    E = nd.gaussian_filter(np.abs(lum - nd.gaussian_filter(lum, 15)), 4)
+    K = np.clip((E - 6.0) / 6.0, 0, 1)
+    # filets fins (1 a 3 px) : contraste local fort sur petite echelle
+    F = np.abs(lum - nd.gaussian_filter(lum, 3 * k))
+    K = np.maximum(K, np.clip((F - 10.0) / 8.0, 0, 1))
+    # reflets lumineux de l'ancienne texture (bandeau du haut et bas de facade) : supprimes, pas des biseaux
+    for (a0, b0, a1, b1) in ((124, 9, 1168, 86), (12, 664, 1864, 721)):
+        K[int(b0 * k):int(b1 * k), int(a0 * k):int(a1 * k)] = 0.0
+    K = nd.gaussian_filter(nd.maximum_filter(K, size=int(3 * k)), 1.5 * k)[..., None]
+    detail = O + (TL - OL)[..., None]                 # biseau d'origine sur la lumiere de la nouvelle texture
+    surface = T                                       # nouvelle texture seule : les sources lumineuses de l'ancienne sont supprimees
+    new = K * detail + (1 - K) * surface
+    m3 = M[..., None]
+    out = m3 * new + (1 - m3) * O
+    out = octopus_frame(out, T)
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+
 # homothetie : 3500 px de large, hauteur proportionnelle (reechantillonnage Lanczos + accentuation legere)
 from PIL import ImageFilter
 W2 = 3500
 H2 = round(W2 * p.shape[0] / p.shape[1])
 big = Image.fromarray(p).resize((W2, H2), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=1.6, percent=60, threshold=2))
+big = apply_texture(big)
 big.save('assets/background.jpg', quality=92)
 print('fond', big.size)
 

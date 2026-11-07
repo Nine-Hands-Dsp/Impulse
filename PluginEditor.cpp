@@ -820,10 +820,10 @@ public:
         };
         // (taille JUCE = hauteur de ligne ~ 1.21 x la taille en points de la maquette)
         label ("MIX", 937.0f, kLabelY[0], 28.0f);
-        label ("OVERLOAD", 936.0f, kLabelY[1], 28.0f);
+        label ("OVERLOAD", 936.0f, kLabelY[1] - 6.0f, 28.0f);
         label ("VARIPHI", 936.0f, kLabelY[2], 28.0f);
-        label ("ir a", 888.5f, 265.0f, 24.0f);
-        label ("ir b", 984.0f, 265.0f, 24.0f);
+        label ("IR A", 868.0f, 250.0f, 23.0f);
+        label ("IR B", 1005.0f, 250.0f, 23.0f);
         label ("%", 937.0f, 443.0f, 24.5f);
         label ("%", 936.5f, 626.0f, 24.5f);
 
@@ -833,7 +833,7 @@ public:
 
         // logo NINE HANDS | DSP (vectoriel) en bas, a la place du texte entre deux traits
         if (logo != nullptr)
-            logo->drawWithin (g, rBrand.withSizeKeepingCentre (rBrand.getWidth() * 0.8f, rBrand.getHeight() * 0.8f), juce::RectanglePlacement::centred, 0.88f);
+            logo->drawWithin (g, rBrand.withSizeKeepingCentre (rBrand.getWidth() * 0.92f, rBrand.getHeight() * 0.92f), juce::RectanglePlacement::centred, 0.88f);
     }
 
     // ---------------------------------------------------------------- souris / fichiers
