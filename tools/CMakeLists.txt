@@ -3,8 +3,9 @@ juce_add_console_app(ImpulseTool PRODUCT_NAME "ImpulseTool")
 target_sources(ImpulseTool PRIVATE
   ImpulseTool.cpp
   ../PluginProcessor.cpp
-  ../PluginEditor.cpp)
-target_include_directories(ImpulseTool PRIVATE ..)
+  ../PluginEditor.cpp
+  ../ImpulseStack.cpp)
+target_include_directories(ImpulseTool PRIVATE .. ${JUCE_SOURCE_DIR}/modules/juce_audio_processors_headless/format_types/VST3_SDK)
 target_compile_features(ImpulseTool PRIVATE cxx_std_17)
 target_compile_definitions(ImpulseTool PRIVATE
   JucePlugin_Name="Impulse"

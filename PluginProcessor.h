@@ -31,10 +31,18 @@ struct IRInfo
     std::vector<float> peakMin, peakMax;   // forme d'onde pour l'affichage (-1..1, normalisee a la crete)
 };
 
+class NhdReaperHost;
+
 class ImpulseProcessor : public juce::AudioProcessor,
+                         public juce::VST3ClientExtensions,
                          private juce::Timer
 {
 public:
+    // ---- mode « stack » (NhdStack.h) : REAPER se fait reconnaitre ici ; Ampire affiche alors cet Impulse sous lui
+    juce::VST3ClientExtensions* getVST3ClientExtensions() override { return this; }
+    void setIHostApplication (Steinberg::FUnknown*) override;
+    void* reaperTrack() const;            // MediaTrack* de REAPER (nullptr hors REAPER)
+
     ImpulseProcessor();
     ~ImpulseProcessor() override;
 
@@ -110,6 +118,14 @@ public:
 
     std::atomic<juce::uint32> accentColour { 0xff4fc3f7 };   // couleur d'accent de l'interface (nuancier)
     std::atomic<int> uiScaleIdx { -1 };    // -1 = taille par defaut choisie, 0..2 = 60 / 75 / 100 %
+
+private:
+    std::unique_ptr<NhdReaperHost> reaperHost;   // REAPER (mode stack)
+    int stackId = 0;
+    void stackRegister();
+    void stackUnregister();
+
+public:
 
     juce::AudioProcessorValueTreeState apvts;
 

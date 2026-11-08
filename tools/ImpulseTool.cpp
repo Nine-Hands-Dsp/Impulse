@@ -3,12 +3,51 @@
 //   ImpulseTool process <in.wav> <out.wav> <rate> <block> [irA] [irB] [mix] [overload] [variphi] [normalize]
 #include "../PluginProcessor.h"
 #include "../PluginEditor.h"
+#include "../NhdStack.h"
+#include <map>
 #include "../ColourPicker.h"
 
 static void setP (ImpulseProcessor& p, const char* id, float v)
 {
     if (auto* prm = p.apvts.getParameter (id)) prm->setValueNotifyingHost (prm->convertTo0to1 (v));
 }
+
+
+// ---- REAPER simule (mode stacktest) : plugin_register / plugin_getapi + piste
+static std::map<std::string, void*> gSimApis;
+static int simRegister (const char* name, void* p)
+{
+    std::string n (name);
+    if (! n.empty() && n[0] == '-') { gSimApis.erase (n.substr (1)); return 1; }
+    gSimApis[n] = p; return 1;
+}
+static void* simGetApi (const char* name)
+{
+    auto it = gSimApis.find (std::string ("API_") + name);
+    return it != gSimApis.end() ? it->second : nullptr;
+}
+class SimReaper : public NhdReaperSdk::IReaperHostApplication
+{
+public:
+    explicit SimReaper (void* tr) : trk (tr) {}
+    Steinberg::tresult PLUGIN_API queryInterface (const Steinberg::TUID iid, void** obj) override
+    {
+        const Steinberg::TUID rid = INLINE_UID (0x79655E36, 0x77EE4267, 0xA573FEF7, 0x4912C27C);
+        if (Steinberg::FUnknownPrivate::iidEqual (iid, rid)) { addRef(); *obj = this; return Steinberg::kResultOk; }
+        *obj = nullptr; return Steinberg::kNoInterface;
+    }
+    Steinberg::uint32 PLUGIN_API addRef() override { return ++refs; }
+    Steinberg::uint32 PLUGIN_API release() override { return --refs; }
+    void* PLUGIN_API getReaperApi (Steinberg::CStringA f) override
+    {
+        if (std::string (f) == "plugin_register") return (void*) &simRegister;
+        if (std::string (f) == "plugin_getapi") return (void*) &simGetApi;
+        return nullptr;
+    }
+    void* PLUGIN_API getReaperParent (Steinberg::uint32 w) override { return w == 1 ? trk : nullptr; }
+    void* PLUGIN_API reaperExtended (Steinberg::uint32, void*, void*, void*) override { return nullptr; }
+    void* trk; Steinberg::uint32 refs = 1;
+};
 
 int main (int argc, char** argv)
 {
@@ -137,6 +176,29 @@ int main (int argc, char** argv)
         juce::File of (arg (2)); of.deleteFile();
         std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (of), rate, 2, 32, {}, 0));
         w->writeFromAudioSampleBuffer (out, 0, n);
+        return 0;
+    }
+    if (mode == "stacktest")
+    {
+        int trackA = 0, trackB = 0;
+        SimReaper hostA (&trackA), hostB (&trackB);
+        auto pA = std::make_unique<ImpulseProcessor>();
+        auto pB = std::make_unique<ImpulseProcessor>();
+        pA->setIHostApplication (&hostA);
+        pB->setIHostApplication (&hostB);
+        using GetApiFn = void* (*) (const char*);
+        auto getApi = reinterpret_cast<GetApiFn> (hostA.getReaperApi ("plugin_getapi"));
+        auto* api = static_cast<const NhdStackApi*> (getApi (NHD_STACK_API_NAME));
+        std::printf ("api published=%d version=%d\n", api != nullptr, api ? api->version : 0);
+        if (api == nullptr) return 2;
+        int trackC = 0;
+        const int iA = api->findOnTrack (&trackA), iB = api->findOnTrack (&trackB), iC = api->findOnTrack (&trackC);
+        std::printf ("findOnTrack: A=%d B=%d other=%d (distinct=%d)\n", iA, iB, iC, iA != iB && iA > 0 && iB > 0);
+        std::printf ("createView without parent=%d, viewAlive(999)=%d\n", api->createView (iA, nullptr, 0, 0, 10, 10, 1.0), api->viewAlive (999));
+        pA.reset();
+        std::printf ("after deleting A: findOnTrack(A)=%d findOnTrack(B)=%d\n", api->findOnTrack (&trackA), api->findOnTrack (&trackB));
+        pB.reset();
+        std::printf ("after deleting B: findOnTrack(B)=%d\n", api->findOnTrack (&trackB));
         return 0;
     }
     if (mode == "process")

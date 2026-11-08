@@ -51,7 +51,12 @@ juce_add_plugin(Impulse
 
 target_sources(Impulse PRIVATE
   PluginProcessor.cpp
-  PluginEditor.cpp)
+  PluginEditor.cpp
+  ImpulseStack.cpp)
+
+# mode stack (NhdStack.h) : interface VST3 de REAPER (funknown.h du SDK VST3 fourni avec JUCE)
+target_include_directories(Impulse PRIVATE
+  ${JUCE_SOURCE_DIR}/modules/juce_audio_processors_headless/format_types/VST3_SDK)
 
 target_compile_features(Impulse PRIVATE cxx_std_17)
 

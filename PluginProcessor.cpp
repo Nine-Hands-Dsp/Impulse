@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "NhdStack.h"
 #include "PluginEditor.h"
 #include "ColourPicker.h"
 
@@ -174,10 +175,13 @@ ImpulseProcessor::ImpulseProcessor()
     accentColour = ImpulseSettings::accent (JucePlugin_Name);   // derniere couleur choisie
     presetSnapshot = snapshotString();
     startTimerHz (60);   // anti-gel v2 : aucun appel a l'hote depuis le thread audio
+    reaperHost = std::make_unique<NhdReaperHost>();
+    stackRegister();
 }
 
 ImpulseProcessor::~ImpulseProcessor()
 {
+    stackUnregister();   // vues affichees sous Ampire detruites avant tout le reste
     stopTimer();
 }
 
