@@ -154,8 +154,8 @@ def content(lang):
            [24, None])]
     # 9. Tips
     b += [("h1", t("9. Tips", "9. Conseils d'utilisation")),
-          ("bullets", [t("<b>Chain in Reaper</b>: guitar &gt; your NINE HANDS | DSP pedals &gt; amp (Genome with its cab off, a NAM capture, a preamp) &gt; <b>Impulse</b> &gt; reverb / delay. An IR loader always goes after the amp.",
-                         "<b>Chaîne dans Reaper</b> : guitare &gt; vos pédales NINE HANDS | DSP &gt; ampli (Genome baffle désactivé, capture NAM, préampli) &gt; <b>Impulse</b> &gt; reverb / delay. Un chargeur d'IR se place toujours après l'ampli."),
+          ("bullets", [t("<b>Chain in Reaper</b>: guitar &gt; your NINE HANDS | DSP pedals &gt; amp (Ampire with a NAM capture, Anode, a preamp) &gt; <b>Impulse</b> &gt; reverb / delay. An IR loader always goes after the amp.",
+                         "<b>Chaîne dans Reaper</b> : guitare &gt; vos pédales NINE HANDS | DSP &gt; ampli (Ampire avec une capture NAM, Anode, préampli) &gt; <b>Impulse</b> &gt; reverb / delay. Un chargeur d'IR se place toujours après l'ampli."),
                        t("<b>Two mics</b>: load the SM57 and the ribbon (or condenser) of the same pack in A and B, MIX at 0, then turn VARIPHI slowly; if the blend sounds thin, try \u00d8 on B.",
                          "<b>Deux micros</b> : chargez le SM57 et le ruban (ou statique) du même pack dans A et B, MIX à 0, puis tournez VARIPHI lentement ; si le mélange sonne maigre, essayez \u00d8 sur B."),
                        t("<b>7-string in G and bass</b>: keep Low cut on Off or 40 Hz to keep the low end; a 60-80 Hz low cut tightens a downtuned guitar without losing its weight. A 1x15 or 8x10 IR in one slot and a 4x12 in the other makes a good bass blend.",
