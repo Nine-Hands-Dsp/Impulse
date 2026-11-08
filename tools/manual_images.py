@@ -2,11 +2,15 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import numpy as np, sys
 A = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/Impulse/tools/manual_assets/'
-ui = Image.open('m_ui.png').convert('RGB'); W, H = ui.size; k = W / 1876
+ui = Image.open('m_ui.png').convert('RGB'); W, H = ui.size
+# repere du plugin (1876 x 782) ; la fenetre montre le boitier seul (sans fond perdu) : x 16.1.., y 13.2..
+VX, VY, VW = 16.1, 13.2, 1876.0 - 2 * 16.1
+k = W / VW
 font = ImageFont.truetype('/home/claude/Impulse/assets/Inter-Bold.otf', 26)
 an = ui.copy(); d = ImageDraw.Draw(an)
-pts = {1:(102,22),2:(1192,20),3:(1712,16),4:(1803,16),5:(42,118),6:(602,118),7:(790,118),8:(120,330),9:(628,256),
-       10:(776,256),11:(668,600),12:(1006,150),13:(1006,330),14:(1006,505),15:(560,52)}
+pts = {1:(102,51),2:(1192,49),3:(1715,45),4:(1810,45),5:(42,163),6:(622,163),7:(785,163),8:(120,375),9:(628,301),
+       10:(776,301),11:(668,645),12:(1006,195),13:(1006,375),14:(1006,550),15:(560,81)}
+pts = {n: (x - VX, y - VY) for n, (x, y) in pts.items()}
 for n, (x, y) in pts.items():
     cx, cy, r = x * k, y * k, 17
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill='white', outline='black', width=3)
