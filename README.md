@@ -2,6 +2,13 @@
 
 Chargeur de réponses impulsionnelles (IR) double **A / B** pour amplis guitare et basse, VST3 Windows et macOS (AU en plus sur macOS).
 
+<p align="center">
+  <a href="https://github.com/Nine-Hands-Dsp/Impulse/releases/latest/download/Impulse-VST3-Windows.zip"><img alt="Télécharger pour Windows" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-Windows-0078D6?style=for-the-badge"></a>
+  <a href="https://github.com/Nine-Hands-Dsp/Impulse/releases/latest/download/Impulse-VST3-macOS.zip"><img alt="Télécharger pour macOS" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <br>
+  <a href="https://github.com/Nine-Hands-Dsp/Impulse/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/Nine-Hands-Dsp/Impulse?label=derni%C3%A8re%20version&color=919496"></a>
+</p>
+
 ## Fonctions
 - Deux slots A / B : bouton dossier, IR précédente / suivante du même dossier, glisser-déposer (deux fichiers déposés ensemble = A et B), clic droit (charger, vider, afficher dans le dossier).
 - Formes d'onde, infos du fichier (durée, fréquence, résolution, mono / stéréo).
