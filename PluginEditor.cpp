@@ -2,6 +2,7 @@
 #include <BinaryData.h>
 #include "WigaWindowSize.h"
 #include "ColourPicker.h"
+#include "MenuStyle.h"
 
 // ============================================================================
 // IMPULSE - interface v005 (maquette Impulse_Design_Mockup_v005, rendu realiste 3600 x 1440, nov. 2026)
@@ -877,6 +878,7 @@ public:
     void showMainMenu (juce::Component* target, int learnIdx, int slot, bool withPresets = true)
     {
         juce::PopupMenu m;
+        MenuStyle::header (m, MenuStyle::icoParams, "Impulse", juce::String::fromUTF8 ("NINE HANDS | DSP  \xc2\xb7  v" JucePlugin_VersionString));
         const int lt = proc.learnTarget.load();
         if (learnIdx >= 0)
         {
@@ -951,8 +953,6 @@ public:
         midi.addItem (910, "CC n+32 = fine (14-bit) for knobs on CC 0-31", false);
         midi.addItem (911, "Buttons and IR / preset steps also learn a MIDI note", false);
         m.addSubMenu ("MIDI", midi);
-        m.addSeparator();
-        m.addItem (999, "Impulse IR loader v" + juce::String (JucePlugin_VersionString) + " - NINE HANDS | DSP", false);
 
         juce::Component::SafePointer<ImpulseContent> sp (this);
         juce::Component::SafePointer<juce::Component> tp (target);
@@ -1243,6 +1243,8 @@ private:
 ImpulseEditor::ImpulseEditor (ImpulseProcessor& p) : AudioProcessorEditor (&p), proc (p)
 {
     setOpaque (true);
+    menuLook = std::make_unique<MenuStyle::MenuLnf>();
+    setLookAndFeel (menuLook.get());               // menus clic droit au design d'Octopus (les menus visent l'editeur)
     content = std::make_unique<ImpulseContent> (proc);
     addAndMakeVisible (*content);
     setResizable (true, true);
@@ -1254,7 +1256,12 @@ ImpulseEditor::ImpulseEditor (ImpulseProcessor& p) : AudioProcessorEditor (&p), 
     else            applyScaleIndex (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
 }
 
-ImpulseEditor::~ImpulseEditor() = default;
+ImpulseEditor::~ImpulseEditor()
+{
+    juce::PopupMenu::dismissAllActiveMenus();
+    content.reset();
+    setLookAndFeel (nullptr);
+}
 
 // Anti-gel (Windows) : moteur de rendu logiciel au lieu de Direct2D
 void ImpulseEditor::useSoftwareRenderer()

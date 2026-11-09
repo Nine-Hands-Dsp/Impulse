@@ -26,6 +26,9 @@ juce_add_binary_data(ImpulseAssets SOURCES
   assets/Inter-SemiBold.otf
   assets/Inter-Bold.otf
   assets/Inter-Medium.otf
+  assets/Poppins-Regular.ttf
+  assets/Poppins-Medium.ttf
+  assets/Poppins-Bold.ttf
   assets/v5/bg.png
   assets/v5/knob_center.png
   assets/v5/knob_crown.png

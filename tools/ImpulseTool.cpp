@@ -1,6 +1,7 @@
 // Outil de verification Linux : captures PNG de l'interface + rendu audio hors ligne.
 //   ImpulseTool render <out.png> <scale> [irA] [irB] [mix] [overload] [variphi]
 //   ImpulseTool process <in.wav> <out.wav> <rate> <block> [irA] [irB] [mix] [overload] [variphi] [normalize]
+#include "../MenuStyle.h"
 #include "../PluginProcessor.h"
 #include "../PluginEditor.h"
 #include "../NhdStack.h"
@@ -87,6 +88,37 @@ int main (int argc, char** argv)
         juce::PNGImageFormat().writeImageToStream (img, os);
         std::printf ("editor %d x %d -> %s\n", ed->getWidth(), ed->getHeight(), out.getFullPathName().toRawUTF8());
         ed.reset();
+        return 0;
+    }
+    if (mode == "menu")         // ImpulseTool menu <out.png> : apercu du menu clic droit (MenuStyle.h, design d'Octopus)
+    {
+        MenuStyle::MenuLnf lf;
+        const char* items[] = { "MIDI Learn: Mix A/B (-)", "Clear MIDI: Mix A/B", "-", "#IR A: Cab 4x12 V30 SM57 A.wav", "Load IR...", "Previous IR in folder",
+                                "Next IR in folder", "Show in folder", "Clear", "-", ">Plugin size", ">Presets", ">Settings", ">MIDI" };
+        const int W = 380, n = (int) (sizeof (items) / sizeof (items[0]));
+        int H = 14 + 52 + 11;
+        for (auto* it : items) H += it[0] == '-' ? 11 : 32;
+        juce::Image img (juce::Image::ARGB, W * 2, H * 2, true);
+        juce::Graphics g (img);
+        g.addTransform (juce::AffineTransform::scale (2.0f));
+        lf.drawPopupMenuBackground (g, W, H);
+        MenuStyle::Header hd (MenuStyle::fonts(), MenuStyle::Badge::ofUi (MenuStyle::icoParams), "Impulse",
+                              juce::String::fromUTF8 ("NINE HANDS | DSP  \xc2\xb7  v" JucePlugin_VersionString));
+        hd.setBounds (7, 7, W - 14, 52);
+        { juce::Graphics::ScopedSaveState ss (g); g.setOrigin (7, 7); hd.paint (g); }
+        int y = 7 + 52;
+        lf.drawPopupMenuItem (g, { 7, y, W - 14, 11 }, true, true, false, false, false, {}, {}, nullptr, nullptr); y += 11;
+        for (int i = 0; i < n; ++i)
+        {
+            const juce::String t (items[i]);
+            if (t == "-") { lf.drawPopupMenuItem (g, { 7, y, W - 14, 11 }, true, true, false, false, false, {}, {}, nullptr, nullptr); y += 11; continue; }
+            if (t.startsWith ("#")) { lf.drawPopupMenuSectionHeader (g, { 7, y, W - 14, 32 }, t.substring (1)); y += 32; continue; }
+            const bool sub = t.startsWith (">");
+            lf.drawPopupMenuItem (g, { 7, y, W - 14, 32 }, false, true, i == 4, false, sub, sub ? t.substring (1) : t, {}, nullptr, nullptr);
+            y += 32;
+        }
+        juce::File out (arg (2)); out.deleteFile();
+        juce::FileOutputStream os (out); juce::PNGImageFormat().writeImageToStream (img, os);
         return 0;
     }
     if (mode == "menuscale")
