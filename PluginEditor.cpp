@@ -346,12 +346,24 @@ public:
             g.fillRoundedRectangle (cx - 6.0f, y, 12.0f, yB - y, 6.0f);
         }
         g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-        drawArt (g, Art::get().thumb, { cx, y });
-        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat(), 16.0f);
+        drawArt (g, Art::get().thumb, { cx, y });                 // curseur « cuvette » (plastique des boutons), ombre comprise
+        g.setColour (col::accent);                                 // repere a la couleur d'accent, au fond du creux
+        g.fillRoundedRectangle (juce::Rectangle<float> (76.0f, 4.0f).withCentre ({ cx, y }), 2.0f);
+        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat().reduced (26.0f, 0.0f), 16.0f);
     }
+    // le composant est plus large que le curseur (place pour son ombre) : seule la colonne du fader reagit a la souris
+    bool hitTest (int x, int) override { return std::abs ((float) x - (float) getWidth() * 0.5f) <= 64.0f; }
     void mouseDown (const juce::MouseEvent& e) override
     {
         if (e.mods.isPopupMenu()) { showContextMenu (*this, learnIdx); return; }
+        // double-clic : retour au gain unite (0 dB) ; pas de glisser ensuite (un tremblement de la souris ne le deplace pas)
+        if (e.getNumberOfClicks() > 1)
+        {
+            if (dragging) attachment.endGesture();
+            dragging = false;
+            attachment.setValueAsCompleteGesture (param.convertFrom0to1 (ImpulseProcessor::faderDefaultPos));
+            return;
+        }
         dragging = true; startNorm = norm();
         attachment.beginGesture();
         // clic hors du bouton : le fader saute a la position cliquee
@@ -368,7 +380,7 @@ public:
         setNorm (startNorm - (float) e.getDistanceFromDragStartY() / travel);
     }
     void mouseUp (const juce::MouseEvent&) override { if (dragging) attachment.endGesture(); dragging = false; }
-    void mouseDoubleClick (const juce::MouseEvent&) override { attachment.setValueAsCompleteGesture (param.convertFrom0to1 (param.getDefaultValue())); }
+    void mouseDoubleClick (const juce::MouseEvent&) override {}   // gere dans mouseDown (2e clic)
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& w) override
     {
         attachment.beginGesture(); setNorm (norm() + w.deltaY * 0.04f); attachment.endGesture();
@@ -546,7 +558,7 @@ public:
             sl.fader = std::make_unique<Fader> (proc, s == 0 ? "gainA" : "gainB", s == 0 ? ImpulseProcessor::lGainA : ImpulseProcessor::lGainB);
             sl.fader->top = kSlotTop - 40.0f;
             addAndMakeVisible (*sl.fader);
-            sl.fader->setBounds (toInt ({ kFaderX + sx - 64.0f, kSlotTop - 40.0f, 128.0f, kSlotBot - kSlotTop + 80.0f }));
+            sl.fader->setBounds (toInt ({ kFaderX + sx - 90.0f, kSlotTop - 40.0f, 180.0f, kSlotBot - kSlotTop + 80.0f }));
             sl.fader->onValue = [this, s]
             {
                 const float db = ImpulseProcessor::faderPosToDb (slot[s].fader->norm());

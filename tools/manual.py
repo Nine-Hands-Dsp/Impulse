@@ -57,7 +57,7 @@ def content():
                        "<b>Clic droit</b> sur un nom ou une forme d'onde : Load IR, IR précédente / suivante du dossier, Show in folder, Clear, et le gain appliqué à cette IR.",
                        "Un fichier illisible affiche un message rouge quelques secondes ; l'IR déjà chargée reste en place."]),
           ("h2", "Niveau, M et \u00d8"),
-          ("p", "Chaque slot a un fader de <b>+12 dB à -\u221e</b> (double-clic : retour à 0 dB ; Maj + glisser : réglage fin), un bouton <b>M</b> qui le coupe (sa forme d'onde s'assombrit) et un bouton <b>\u00d8</b> qui inverse sa polarité, utile quand deux micros s'annulent."),
+          ("p", "Chaque slot a un fader de <b>+12 dB à -\u221e</b> (double-clic sur le curseur : retour au gain unité, 0 dB ; Maj + glisser : réglage fin), un bouton <b>M</b> qui le coupe (sa forme d'onde s'assombrit) et un bouton <b>\u00d8</b> qui inverse sa polarité, utile quand deux micros s'annulent."),
           ("h2", "MIX"),
           ("p", "Le potard affiche la quantité et le côté qui domine : <b>50A</b> = à mi-course vers A (A 75 %, B 25 %), <b>30B</b> = vers B, <b>0</b> = centre. Une petite <b>butée</b> retient le potard sur 0 quand on passe d'un côté à l'autre (à la molette aussi) ; un double-clic n'importe où sur le potard, valeur comprise, le remet au centre."),
           ("p", "De <b>100A</b> (A seul) à <b>100B</b> (B seul), <b>0</b> = les deux à -6 dB chacun, un fondu linéaire qui garde le niveau constant pour deux IR du même baffle. Quand un seul slot est actif (l'autre vide ou coupé), il joue à 100 % quel que soit MIX. Sans aucune IR, le son passe sans traitement."),
