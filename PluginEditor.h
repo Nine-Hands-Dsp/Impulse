@@ -29,6 +29,7 @@ private:
     void* lastPeer = nullptr;
     juce::uint32 lastRendererCheck = 0;
     ImpulseProcessor& proc;
+    std::unique_ptr<juce::LookAndFeel> menuLook;      // menus au design d'Octopus (MenuStyle.h), detruite apres le contenu
     std::unique_ptr<ImpulseContent> content;
     std::unique_ptr<juce::FileChooser> folderChooser;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ImpulseEditor)
