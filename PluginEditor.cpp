@@ -1118,7 +1118,7 @@ private:
         if (proc.getInfoVersion() != drawnInfoVersion)
         {
             refreshInfos();
-            for (int s = 0; s < 2; ++s) { askRepaint (toInt (rCard[s])); askRepaint (toInt (rWave[s])); }
+            for (int s = 0; s < 2; ++s) { askRepaint (toInt (rCard[s])); askRepaint (toInt (rWave[s])); askRepaint (toInt (rName.translated (s * kCardDx, 0))); }   // le nom est au-dessus de la carte (v005)
             askRepaint (toInt (rPreset));
         }
         for (int s = 0; s < 2; ++s)
