@@ -231,7 +231,10 @@ public:
 };
 
 // ---- potard (MIX / OVERLOAD / VARIPHI)
-class Knob : public ParamControl
+// La couronne crantee, tournee par a-coups de quelques degres (glisser la souris), semblait tourner a l'envers
+// (effet stroboscopique, « roue de diligence »). Comme une vraie couronne qui tourne, elle est dessinee avec un flou de
+// mouvement sur l'angle parcouru depuis l'image precedente, puis redevient nette 70 ms apres l'arret. Le repere reste net.
+class Knob : public ParamControl, private juce::Timer
 {
 public:
     Knob (ImpulseProcessor& p, const char* id, int learn, bool bipolarIn) : ParamControl (p, id, learn), bipolar (bipolarIn) {}
@@ -255,24 +258,17 @@ public:
         }
         const juce::Point<float> dot (c.x + kGaugeR * std::sin (ang), c.y - kGaugeR * std::cos (ang));
         g.setColour (juce::Colours::white);
-        g.fillEllipse (dot.x - 7.0f, dot.y - 7.0f, 14.0f, 14.0f);
+        { const float r = 7.0f * 0.65f; g.fillEllipse (dot.x - r, dot.y - r, 2.0f * r, 2.0f * r); }   // diode du repere (-35 %)
 
         // potard : centre fixe, couronne crantee qui tourne, reflet statique par-dessus
         const auto kr = juce::Rectangle<float> (2.0f * kKnobR, 2.0f * kKnobR).withCentre (c);
         g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-        g.drawImage (art.knobCenter, kr);
-        if (art.knobCrown.isValid())
-        {
-            const float sc = 2.0f * kKnobR / (float) art.knobCrown.getWidth();
-            g.drawImageTransformed (art.knobCrown, juce::AffineTransform::translation (-0.5f * (float) art.knobCrown.getWidth(), -0.5f * (float) art.knobCrown.getHeight())
-                                                       .rotated (ang).scaled (sc).translated (c.x, c.y));
-        }
-        g.drawImage (art.knobReflect, kr);
+        g.drawImage (crownLayer (g, ang), kr);
 
         // valeur au centre (MIX : valeur + cote dominant « 50A », « 30B », « 0 » au centre)
         const int v = (int) std::lround (value());
         const juce::String txt = bipolar && v != 0 ? juce::String (std::abs (v)) + (v < 0 ? "A" : "B") : juce::String (v);
-        g.setFont (fBold (txt.length() >= 4 ? 60.0f : 72.0f));
+        g.setFont (fBold ((txt.length() >= 4 ? 60.0f : 72.0f) * 0.7f));   // valeur dans le potard (-30 %)
         const juce::Rectangle<float> tr (c.x - 90, c.y - 44, 180, 88);
         g.setColour (juce::Colours::black.withAlpha (0.7f));
         g.drawText (txt, tr.translated (2.0f, 3.0f), juce::Justification::centred);
@@ -281,6 +277,78 @@ public:
         if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, juce::Rectangle<float> (2.0f * (kGaugeR + 14.0f), 2.0f * (kGaugeR + 14.0f)).withCentre (c), kGaugeR + 14.0f);
     }
 
+    // centre + couronne (nette ou floutee sur l'angle parcouru) + reflet, a la resolution physique, en cache
+    const juce::Image& crownLayer (juce::Graphics& g, float ang)
+    {
+        const auto& art = Art::get();
+        const float ps = juce::jmax (1.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+        const int S = juce::jmax (8, (int) std::ceil (2.0f * kKnobR * ps));
+        const bool sameSize = crownCache.isValid() && crownCache.getWidth() == S;
+        if (sameSize && ang == cacheAng && ! needSharp) return crownCache;
+        const float from = (sameSize && ! needSharp && std::isfinite (cacheAng)) ? cacheAng : ang;
+        needSharp = false; cacheAng = ang;
+        crownCache = juce::Image (juce::Image::ARGB, S, S, true);
+        juce::Graphics cg (crownCache);
+        cg.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        const auto full = juce::Rectangle<float> ((float) S, (float) S);
+        cg.drawImage (art.knobCenter, full);
+        if (art.knobCrown.isValid())
+        {
+            const float k = (float) S / (float) art.knobCrown.getWidth();
+            auto place = [&] (float a)
+            {
+                return juce::AffineTransform::translation (-0.5f * (float) art.knobCrown.getWidth(), -0.5f * (float) art.knobCrown.getHeight())
+                           .rotated (a).scaled (k).translated (0.5f * (float) S, 0.5f * (float) S);
+            };
+            const int sub = juce::jlimit (1, 16, (int) std::ceil (std::abs (ang - from) / juce::degreesToRadians (0.6f)));
+            if (sub <= 1) cg.drawImageTransformed (art.knobCrown, place (ang));
+            else
+            {
+                std::vector<float> acc ((size_t) S * (size_t) S * 4, 0.0f);
+                juce::Image tmp (juce::Image::ARGB, S, S, true);
+                for (int i = 0; i < sub; ++i)
+                {
+                    tmp.clear (tmp.getBounds());
+                    {
+                        juce::Graphics tg (tmp);
+                        tg.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+                        tg.drawImageTransformed (art.knobCrown, place (from + (ang - from) * ((float) i + 1.0f) / (float) sub));
+                    }
+                    const juce::Image::BitmapData bd (tmp, juce::Image::BitmapData::readOnly);
+                    for (int y = 0; y < S; ++y)
+                        for (int x = 0; x < S; ++x)
+                        {
+                            const auto* px = reinterpret_cast<const juce::PixelARGB*> (bd.getPixelPointer (x, y));
+                            float* a4 = &acc[((size_t) y * (size_t) S + (size_t) x) * 4];
+                            a4[0] += px->getAlpha(); a4[1] += px->getRed(); a4[2] += px->getGreen(); a4[3] += px->getBlue();
+                        }
+                }
+                juce::Image blurred (juce::Image::ARGB, S, S, true);
+                {
+                    const juce::Image::BitmapData bd (blurred, juce::Image::BitmapData::writeOnly);
+                    const float inv = 1.0f / (float) sub;
+                    for (int y = 0; y < S; ++y)
+                        for (int x = 0; x < S; ++x)
+                        {
+                            const float* a4 = &acc[((size_t) y * (size_t) S + (size_t) x) * 4];
+                            reinterpret_cast<juce::PixelARGB*> (bd.getPixelPointer (x, y))
+                                ->setARGB ((juce::uint8) std::lround (a4[0] * inv), (juce::uint8) std::lround (a4[1] * inv),
+                                           (juce::uint8) std::lround (a4[2] * inv), (juce::uint8) std::lround (a4[3] * inv));   // premultiplie
+                        }
+                }
+                cg.drawImageAt (blurred, 0, 0);
+                startTimer (70);                   // redevient nette quand le potard s'arrete
+            }
+        }
+        cg.drawImage (art.knobReflect, full);
+        return crownCache;
+    }
+    void timerCallback() override { stopTimer(); needSharp = true; repaint(); }
+    juce::Image crownCache;
+    float cacheAng = std::numeric_limits<float>::quiet_NaN();
+    bool needSharp = false;
+
+public:
     void mouseDown (const juce::MouseEvent& e) override
     {
         if (e.mods.isPopupMenu()) { showContextMenu (*this, learnIdx); return; }

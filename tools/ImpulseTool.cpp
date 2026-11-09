@@ -75,6 +75,12 @@ int main (int argc, char** argv)
         if (arg (11) == "picker") if (auto* ie = dynamic_cast<ImpulseEditor*> (ed.get())) ie->openColourPicker (nullptr);
         juce::MessageManager::getInstance()->runDispatchLoopUntil (600);   // timer : cache du fond
         auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+        if (arg (12) == "blur")   // apercu du flou de mouvement de la couronne : OVERLOAD tourne de +4 % entre deux images
+        {
+            setP (proc, "overload", arg (7).getFloatValue() + 4.0f);
+            juce::MessageManager::getInstance()->runDispatchLoopUntil (40);
+            img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+        }
         juce::File out (arg (2));
         out.deleteFile();
         juce::FileOutputStream os (out);
