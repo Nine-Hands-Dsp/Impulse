@@ -3,29 +3,31 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import numpy as np, sys
 A = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/Impulse/tools/manual_assets/'
 ui = Image.open('m_ui.png').convert('RGB'); W, H = ui.size
-# repere du plugin (1876 x 782) ; la fenetre montre le boitier seul (sans fond perdu) : x 16.1.., y 13.2..
-VX, VY, VW = 16.1, 13.2, 1876.0 - 2 * 16.1
-k = W / VW
+# repere du plugin v005 (3600 x 1440, la fenetre montre tout le rendu)
+k = W / 3600.0
 font = ImageFont.truetype('/home/claude/Impulse/assets/Inter-Bold.otf', 26)
 an = ui.copy(); d = ImageDraw.Draw(an)
-pts = {1:(102,51),2:(1192,49),3:(1715,45),4:(1810,45),5:(42,163),6:(622,163),7:(785,163),8:(120,375),9:(628,301),
-       10:(776,301),11:(668,645),12:(1006,195),13:(1006,375),14:(1006,550),15:(560,81)}
-pts = {n: (x - VX, y - VY) for n, (x, y) in pts.items()}
+pts = {1:(175,62),2:(2300,40),3:(3268,46),4:(3422,46),5:(48,300),6:(1078,300),7:(1309,300),8:(300,640),9:(1203,560),
+       10:(1355,560),11:(1255,1180),12:(1915,375),13:(1915,720),14:(1915,1062),15:(1490,122)}
 for n, (x, y) in pts.items():
     cx, cy, r = x * k, y * k, 17
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill='white', outline='black', width=3)
     d.text((cx, cy + 1), str(n), fill='black', font=font, anchor='mm')
 an.save(A + 'annotated.png')
 Image.open('m_col.png').convert('RGB').save(A + 'colour.png')
-Image.open('m_pick.png').convert('RGB').crop((600, 0, 1180, 480)).save(A + 'picker.png')
-cw, ch = 1994, 1069; bg = Image.new('RGB', (cw, ch), (0, 0, 0))
-x0, y0 = (cw - W) // 2, 110
-halo = Image.new('L', (cw, ch), 0); ImageDraw.Draw(halo).rounded_rectangle((x0 - 10, y0 - 10, x0 + W + 10, y0 + H + 10), 30, fill=255)
-halo = halo.filter(ImageFilter.GaussianBlur(70))
-glow = Image.new('RGB', (cw, ch), (20, 90, 130)); bg = Image.composite(glow, bg, halo.point(lambda v: int(v * 0.55)))
-bg.paste(ui, (x0, y0))
-ref = ui.transpose(Image.FLIP_TOP_BOTTOM).crop((0, 0, W, ch - (y0 + H) - 6))
-g = np.linspace(0.28, 0, ref.size[1])[:, None, None]
-base = np.asarray(bg.crop((x0, y0 + H + 6, x0 + W, ch))).astype(float)
-bg.paste(Image.fromarray((base * (1 - g) + np.asarray(ref).astype(float) * g).astype('uint8')), (x0, y0 + H + 6))
+Image.open('m_pick.png').convert('RGB').crop((610, 0, 1170, 470)).save(A + 'picker.png')
+# ---- couverture « minimale » : facade detouree (alpha du fond v005), reflet sur sol noir, halo d'accent tres doux
+# cover.png : la facade occupe exactement (PAD, PAD) -> (PAD + W, PAD + H) ; le reste est le reflet et le halo (fond noir).
+alpha = Image.open('/home/claude/Impulse/assets/v5/bg.png').getchannel('A').resize((W, H), Image.LANCZOS)
+PAD = int(W * 0.16); cw, ch = W + 2 * PAD, H + 2 * PAD
+bg = Image.new('RGB', (cw, ch), (0, 0, 0))
+halo = Image.new('L', (cw, ch), 0); halo.paste(alpha, (PAD, PAD)); halo = halo.filter(ImageFilter.GaussianBlur(PAD * 0.33))
+glow = Image.new('RGB', (cw, ch), (42, 164, 220)); bg = Image.composite(glow, bg, halo.point(lambda v: int(v * 0.30)))
+ref = ui.transpose(Image.FLIP_TOP_BOTTOM); ra = alpha.transpose(Image.FLIP_TOP_BOTTOM)
+fade = np.linspace(0.22, 0, int(H * 0.45))
+m = np.zeros((H, W)); m[:len(fade)] = fade[:, None]
+ra = Image.fromarray((np.asarray(ra).astype(float) * m).astype('uint8'))
+bg.paste(ref, (PAD, PAD + H + 4), ra)
+bg.paste(ui, (PAD, PAD), alpha)
 bg.save(A + 'cover.png')
+open(A + 'cover_geom.txt', 'w').write('%d %d %d\n' % (PAD, W, H))

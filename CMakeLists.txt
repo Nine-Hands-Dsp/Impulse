@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 endif()
 
-project(WigaImpulse VERSION 1.4.5)
+project(WigaImpulse VERSION 1.5.0)
 
 option(IMPULSE_TOOLS "Build the Linux render / test tools" OFF)
 
@@ -26,9 +26,21 @@ juce_add_binary_data(ImpulseAssets SOURCES
   assets/Inter-SemiBold.otf
   assets/Inter-Bold.otf
   assets/Inter-Medium.otf
-  assets/nine_hands_logo_blanc.svg
-  assets/impulse_logo_blanc.svg
-  assets/background.jpg)
+  assets/v5/bg.png
+  assets/v5/knob_center.png
+  assets/v5/knob_crown.png
+  assets/v5/knob_reflect.png
+  assets/v5/btn120_down.png
+  assets/v5/btn100_down.png
+  assets/v5/thumb.png
+  assets/v5/ico_power.svg
+  assets/v5/ico_list_search.svg
+  assets/v5/ico_prev.svg
+  assets/v5/ico_next.svg
+  assets/v5/ico_save.svg
+  assets/v5/ico_gear.svg
+  assets/v5/ico_mute.svg
+  assets/v5/ico_phase.svg)
 
 if(APPLE)
   set(IMPULSE_FORMATS VST3 AU)

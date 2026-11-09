@@ -1,4 +1,4 @@
-# NINE HANDS | DSP - moteur commun des notices PDF bilingues (anglais puis francais), style maison.
+# NINE HANDS | DSP - moteur commun des notices PDF (francais uniquement), style maison, couverture « minimale » (modele 6).
 # Utilise par tools/manual.py (contenu de la notice). Images et polices dans tools/manual_assets/.
 # Blocs de contenu (listes de tuples) :
 #   ("h1", txt) ("h2", txt) ("p", txt) ("small", txt) ("bullets", [txt...]) ("pb",) ("cond", mm) ("space", mm)
@@ -26,14 +26,15 @@ FONTS = os.path.join(ASSETS, "fonts")
 for n, f in (("PopL", "Poppins-Light"), ("Pop", "Poppins-Regular"), ("PopM", "Poppins-Medium"), ("PopB", "Poppins-Bold"),
              ("PopLI", "Poppins-LightItalic")):
     pdfmetrics.registerFont(TTFont(n, os.path.join(FONTS, f + ".ttf")))
+pdfmetrics.registerFont(TTFont("Title", os.path.join(FONTS, "BarlowCondensed-ExtraBold.ttf")))
 addMapping("PopL", 0, 0, "PopL"); addMapping("PopL", 1, 0, "PopB"); addMapping("PopL", 0, 1, "PopLI"); addMapping("PopL", 1, 1, "PopB")
 
 DARK = colors.HexColor("#1B1F2A"); GREY = colors.HexColor("#6B7080"); LIGHT = colors.HexColor("#F2F3F7")
 W = A4[0] - 36 * mm
 
 
-def build(out, product, version, accent, cover_name, texts, content, footer=None):
-    """texts[lang] = dict(lang=..., sub=[lignes], ver=...) ; content(lang) -> liste de blocs."""
+def build(out, product, version, accent, accent_light, cover_name, cover_sub, content, footer=None):
+    """Notice en francais uniquement. cover_name : nom en capitales ; cover_sub : mention courte ; content() -> blocs."""
     ACC = colors.HexColor(accent)
     st = {
         "h1": ParagraphStyle("h1", fontName="PopB", fontSize=17, leading=21, textColor=ACC, spaceAfter=6, spaceBefore=8, keepWithNext=1),
@@ -116,21 +117,9 @@ def build(out, product, version, accent, cover_name, texts, content, footer=None
             else: raise ValueError(k)
         return f
 
-    def section(lang):
-        t = texts[lang]
-        f = [NextPageTemplate("p"), Spacer(1, 2 * mm), P(t["lang"], "coverlang"), Spacer(1, 4 * mm)]
-        cov = Image.open(os.path.join(ASSETS, "cover.png"))
-        ch = 150 * mm
-        cw = ch * cov.width / cov.height
-        if cw > W * 0.9: cw = W * 0.9; ch = cw * cov.height / cov.width
-        f.append(img("cover.png", cw))
-        if cover_name.endswith(".png"):   # logo du produit (image) a la place du nom en texte
-            f += [Spacer(1, 6 * mm), img(cover_name, 78 * mm), Spacer(1, 4 * mm)]
-        else:
-            f += [Spacer(1, 6 * mm), P(cover_name, "cover"), Spacer(1, 2 * mm)]
-        f += [P(x, "coversub") for x in t["sub"]]
-        f += [Spacer(1, 1 * mm), P(t["ver"], "coversub"), Spacer(1, 8 * mm), img("nine_hands_logo_blanc.png", 62 * mm), PageBreak()]
-        f += flow(content(lang))
+    def section():
+        f = [NextPageTemplate("p"), Spacer(1, 1), PageBreak()]
+        f += flow(content())
         f.append(PageBreak())
         return f
 
@@ -144,15 +133,34 @@ def build(out, product, version, accent, cover_name, texts, content, footer=None
         c.drawRightString(A4[0] - 18 * mm, 10 * mm, str(doc.page))
         c.restoreState()
 
+    # ---- couverture « minimale » (modele 6) : gabarit fixe commun a toutes les notices, mm depuis le HAUT (logo/bandeau : depuis le bas)
+    PEDAL_H, PEDAL_MAXW, PEDAL_TOP = 82 * mm, 115 * mm, 84 * mm
+    LANG_TOP, NAME_TOP, NAME_PT, SUB_TOP, SUB_PT = 18 * mm, 194 * mm, 30, 208 * mm, 10
+    LOGO_W, LOGO_BOTTOM, BAND_H = 38 * mm, 22 * mm, 3 * mm
+    cover = os.path.join(ASSETS, "cover.png"); logo = os.path.join(ASSETS, "nine_hands_logo_blanc.png")
+    pad, ow, oh = (int(v) for v in open(os.path.join(ASSETS, "cover_geom.txt")).read().split())
+
     def cover_bg(c, doc):
         c.saveState(); c.setFillColor(colors.black); c.rect(0, 0, A4[0], A4[1], stroke=0, fill=1)
-        c.setFillColor(ACC); c.rect(0, A4[1] - 3 * mm, A4[0], 3 * mm, stroke=0, fill=1); c.restoreState()
+        c.setFillColor(ACC); c.rect(0, 0, A4[0], BAND_H, stroke=0, fill=1)
+        def line(text, top, font, size, cs, col):
+            w = pdfmetrics.stringWidth(text, font, size) + cs * (len(text) - 1)
+            t = c.beginText((A4[0] - w) / 2, A4[1] - top - size * 0.8); t.setFont(font, size); t.setCharSpace(cs)
+            t.setFillColor(col); t.textOut(text); c.drawText(t)
+        line("FRANÇAIS", LANG_TOP, "PopM", 8.5, 0, colors.HexColor(accent_light))
+        iw, ih = Image.open(cover).size
+        k = min(PEDAL_H / oh, PEDAL_MAXW / ow)
+        top = A4[1] - (PEDAL_TOP + (PEDAL_H - oh * k) / 2) + pad * k     # haut de l'image (facade centree dans sa boite)
+        c.drawImage(cover, (A4[0] - iw * k) / 2, top - ih * k, iw * k, ih * k)
+        line(cover_name, NAME_TOP - NAME_PT * 0.02, "Title", NAME_PT, NAME_PT * 0.5, colors.white)
+        line(cover_sub, SUB_TOP, "Pop", SUB_PT, 1.5, colors.HexColor("#BDC4B8"))
+        lw, lh = Image.open(logo).size
+        c.drawImage(logo, (A4[0] - LOGO_W) / 2, LOGO_BOTTOM, LOGO_W, LOGO_W * lh / lw, mask="auto")
+        c.restoreState()
 
     doc = BaseDocTemplate(out, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=18 * mm,
-                          title=product + " - Manual / Notice v" + version, author="NINE HANDS | DSP")
+                          title=product.upper() + " - Notice v" + version, author="NINE HANDS | DSP")
     doc.addPageTemplates([PageTemplate(id="cover", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="fc")], onPage=cover_bg),
                           PageTemplate(id="p", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="f")], onPage=deco)])
-    en = section("en"); fr = section("fr")
-    en[-1:] = [NextPageTemplate("cover"), PageBreak()]
-    doc.build(en + fr[:-1])
+    doc.build(section()[:-1])
     print(out)

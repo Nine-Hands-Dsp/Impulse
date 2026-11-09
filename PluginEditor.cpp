@@ -4,25 +4,24 @@
 #include "ColourPicker.h"
 
 // ============================================================================
-// IMPULSE - interface « metal brosse » (d'apres la maquette fournie, nov. 2026)
-// Tout est dessine dans le repere de la maquette (1876 x 737 points), puis mis a l'echelle de la fenetre :
-// net a toutes les tailles et a tous les zooms Windows / Retina. Fenetre par defaut (« 60 % ») : 747 x 298 (sans fond perdu) (meme largeur qu'Ampire).
+// IMPULSE - interface v005 (maquette Impulse_Design_Mockup_v005, rendu realiste 3600 x 1440, nov. 2026)
+// Repere de dessin = pixels du rendu (3600 x 1440). Le fond (plaque, ecrans, boutons, etiquettes, graduations,
+// logos, ombres) est une image ; le plugin dessine par-dessus ce qui bouge : potards (couronne qui tourne),
+// jauges, faders, formes d'onde, noms, preset, etats des boutons. Fenetre par defaut (« 60 % ») : 747 x 299.
 // ============================================================================
 namespace
 {
-    constexpr int kW = 1876, kH = 782;          // repere de dessin : maquette 1876 x 737 + 45 de bandeau (meme hauteur qu'Ampire)
-    constexpr float kTop = 45.0f;               // corps descendu de 45 (bandeau du haut agrandi)
-    // partie visible : le boitier seul, sans le fond perdu (marge noire facon Ampire : 16.1 a gauche / droite,
-    // 13.2 en haut, 33 en bas, en unites du repere)
-    constexpr float kVisX = 16.1f, kVisY = 13.2f, kVisW = 1876.0f - 2.0f * 16.1f, kVisH = 782.0f - 13.2f - 33.0f;
-    constexpr int kWin = 747, kWinH = 298;      // taille de la fenetre « 60 % » (meme largeur qu'Ampire)
+    constexpr int kW = 3600, kH = 1440;
+    constexpr float kVisX = 0.0f, kVisY = 0.0f, kVisW = 3600.0f, kVisH = 1440.0f;
+    constexpr int kWin = 747, kWinH = 299;      // taille de la fenetre « 60 % » (meme largeur qu'Ampire)
     const float kScales[3] = { 1.0f, 1.25f, 5.0f / 3.0f };   // 60 % (defaut) / 75 % / 100 %
+    constexpr float U = 3600.0f / 1876.0f;      // tailles reprises de l'ancienne interface (repere 1876)
 
     namespace col
     {
-        const juce::Colour outer   (0xff0d0d0d), nameBox (0xff181818), nameBoxLo (0xff111111),
+        const juce::Colour outer   (0xff000000), nameBox (0xff181818), nameBoxLo (0xff111111),
                            btnHi   (0xff4a4a4a), btnLo (0xff262626), btnEdge (0xff0b0b0b),
-                           waveTop (0xff0e0e0e), waveBot (0xff161616), grid (0xff272727),
+                           waveTop (0xff0e0e0e), waveBot (0xff161616), grid (0xff232425),
                            label   (0xffd2d2d2), text (0xffececec), info (0xffd4d4d4), dim (0xff8a8a8a),
                            knobTrack (0xff141414), letter (0xff1c1c1c), tick (0xff4a4a4a), tickTxt (0xffcfcfcf),
                            icon    (0xffe4e4e4), err (0xffe0705a);
@@ -53,29 +52,65 @@ namespace
         return f;
     }
 
-    // ---- geometrie (pixels de la maquette 1876 x 737, symetrique autour de x = 938)
+    // ---- images du design v005 (BinaryData)
+    struct Art
+    {
+        juce::Image bg, knobCenter, knobCrown, knobReflect, btn120Down, btn100Down, thumb;
+        std::unique_ptr<juce::Drawable> icPower, icList, icPrev, icNext, icSave, icGear, icMute, icPhase;
+        static std::unique_ptr<juce::Drawable> svg (const void* d, int n) { return juce::Drawable::createFromImageData (d, (size_t) n); }
+        Art()
+        {
+            bg          = juce::ImageCache::getFromMemory (BinaryData::bg_png, BinaryData::bg_pngSize);
+            knobCenter  = juce::ImageCache::getFromMemory (BinaryData::knob_center_png, BinaryData::knob_center_pngSize);
+            knobCrown   = juce::ImageCache::getFromMemory (BinaryData::knob_crown_png, BinaryData::knob_crown_pngSize);
+            knobReflect = juce::ImageCache::getFromMemory (BinaryData::knob_reflect_png, BinaryData::knob_reflect_pngSize);
+            btn120Down  = juce::ImageCache::getFromMemory (BinaryData::btn120_down_png, BinaryData::btn120_down_pngSize);
+            btn100Down  = juce::ImageCache::getFromMemory (BinaryData::btn100_down_png, BinaryData::btn100_down_pngSize);
+            thumb       = juce::ImageCache::getFromMemory (BinaryData::thumb_png, BinaryData::thumb_pngSize);
+            icPower = svg (BinaryData::ico_power_svg, BinaryData::ico_power_svgSize);
+            icList  = svg (BinaryData::ico_list_search_svg, BinaryData::ico_list_search_svgSize);
+            icPrev  = svg (BinaryData::ico_prev_svg, BinaryData::ico_prev_svgSize);
+            icNext  = svg (BinaryData::ico_next_svg, BinaryData::ico_next_svgSize);
+            icSave  = svg (BinaryData::ico_save_svg, BinaryData::ico_save_svgSize);
+            icGear  = svg (BinaryData::ico_gear_svg, BinaryData::ico_gear_svgSize);
+            icMute  = svg (BinaryData::ico_mute_svg, BinaryData::ico_mute_svgSize);
+            icPhase = svg (BinaryData::ico_phase_svg, BinaryData::ico_phase_svgSize);
+        }
+        static const Art& get() { static Art a; return a; }
+    };
+    // icone (carre de 100 unites centre) dessinee centree en c, d'une couleur donnee
+    void drawIcon (juce::Graphics& g, const juce::Drawable* d, juce::Point<float> c, float size, juce::Colour colour)
+    {
+        if (d == nullptr) return;
+        auto cp = d->createCopy();
+        cp->replaceColour (juce::Colour (0xffe8e8e8), colour);
+        // les SVG ont une viewBox -50..50 (marges comprises) : echelle fixe, pas d'ajustement aux traces
+        cp->draw (g, 1.0f, juce::AffineTransform::scale (size / 100.0f).translated (c.x, c.y));   // viewBox -50..50 centree sur 0
+    }
+    // image d'un element (ombre comprise) centree en c, a sa taille en pixels du rendu
+    void drawArt (juce::Graphics& g, const juce::Image& im, juce::Point<float> c)
+    {
+        if (! im.isValid()) return;
+        g.drawImage (im, juce::Rectangle<float> ((float) im.getWidth(), (float) im.getHeight()).withCentre (c));
+    }
+
+    // ---- geometrie (pixels du rendu 3600 x 1440, maquette v005)
     const juce::Rectangle<float> rFrame (0, 0, (float) kW, (float) kH);
-    const juce::Rectangle<float> rCard[2]  = { { 12, 93 + kTop, 790, 567 }, { 1074, 93 + kTop, 790, 567 } };
-    const juce::Rectangle<float> rLower[2] = { { 37, 243 + kTop, 748, 412 }, { 1090, 243 + kTop, 748, 412 } };
-    const juce::Rectangle<float> rWave[2]  = { { 37, 243 + kTop, 573, 412 }, { 1265, 243 + kTop, 573, 412 } };
-    const juce::Rectangle<float> rStrip[2] = { { 610, 243 + kTop, 175, 412 }, { 1090, 243 + kTop, 175, 412 } };
-    const juce::Rectangle<float> rWaveIn[2] = { { 41, 247 + kTop, 568, 404 }, { 1266, 247 + kTop, 568, 404 } };   // interieur (dans le cadre de la maquette)
-    constexpr float kCardDx = 1053.0f, kStripDx = 480.0f;
-    // boutons dossier / precedent / suivant a la taille de ceux d'Ampire (28 px a l'ecran a la taille par defaut)
-    // colonnes alignees sur les boutons d'Ampire quand Impulse est empile dessous (memes x, meme pas) ;
-    // le slot A reprend la meme place dans son panneau
-    const juce::Rectangle<float> rName (37, 133 + kTop, 501, 69), rFolder (549.7f, 133 + kTop, 69.6f, 69), rPrev (627.5f, 133 + kTop, 69.6f, 69), rNext (705.3f, 133 + kTop, 69.6f, 69);
-    const juce::Rectangle<float> rMute (634, 263 + kTop, 54, 47), rPhase (711, 263 + kTop, 54, 47);
-    constexpr float kLetterSize = 338.0f, kLetterDy = 146.0f, kLetterDx[2] = { 5.5f, 15.0f }, kLetterSx[2] = { 1.10f, 1.06f };
-    constexpr float kFaderX = 700.0f, kFaderTop = 341.0f + kTop, kFaderBot = 615.0f + kTop, kTickLabelX = 743.0f;
-    // colonne centrale (mesures de la maquette) : potards de rayon 45 dans un anneau sombre de rayon 57, arc a 51.5
-    constexpr float kKnobX = 936.5f, kKnobR = 51.5f, kKnobBodyR = 45.0f, kKnobRingR = 57.0f;
-    const float kKnobY[3] = { 201.5f + kTop, 378.5f + kTop, 555.0f + kTop }, kLabelY[3] = { 124.5f + kTop, 308.0f + kTop, 480.0f + kTop };
-    const char* kFaderTicks[10] = { "12", "6", "0", "6", "12", "18", "36", "45", "60", "" };
-    const juce::Rectangle<float> rPreset (1175, 46.2f, 490, 69), rSave (1680.5f, 46.2f, 69.6f, 69), rGear (1758.3f, 46.2f, 69.6f, 69);   // sous le bord du haut facon Ampire
-    const juce::Rectangle<float> rStatus (360, 58.7f, 790, 44);
-    const juce::Rectangle<float> rTitle (158.6f, 51.0f, 203.0f, 59.6f), rPower (40, 54.7f, 52, 52);   // bandeau : tout centre a y = 80.7 (a egale distance du filet du haut et du bas)
-    const juce::Rectangle<float> rBrand (938 - 108, 675.5f + kTop - 10.0f, 216, 20);   // au-dessus du bas sombre facon Ampire
+    const juce::Rectangle<float> rCard[2]  = { { 58, 537, 1448, 811 }, { 2094, 537, 1448, 811 } };     // ecrans A / B (faders compris)
+    const juce::Rectangle<float> rLower[2] = { { 58, 537, 1448, 811 }, { 2094, 537, 1448, 811 } };
+    const juce::Rectangle<float> rWave[2]  = { { 58, 537, 1094, 811 }, { 2448, 537, 1094, 811 } };     // partie forme d'onde
+    const juce::Rectangle<float> rWaveIn[2] = { { 70, 549, 1070, 787 }, { 2460, 549, 1070, 787 } };
+    constexpr float kCardDx = 2036.0f, kStripDx = 942.0f;
+    const juce::Rectangle<float> rName (58, 312.5f, 986, 120);
+    const juce::Rectangle<float> rFolder (1078, 312.5f, 120, 120), rPrev (1232, 312.5f, 120, 120), rNext (1386, 312.5f, 120, 120);
+    const juce::Rectangle<float> rMute (1203, 571, 100, 100), rPhase (1355, 571, 100, 100);
+    constexpr float kFaderX = 1329.0f, kFaderTop = 740.5f, kFaderBot = 1243.5f, kSlotTop = 704.0f, kSlotBot = 1280.0f;
+    constexpr float kKnobX = 1800.0f, kKnobR = 85.0f, kGaugeR = 101.5f;
+    const float kKnobY[3] = { 466.5f, 810.0f, 1153.5f };
+    const juce::Rectangle<float> rPreset (2271, 58, 963, 120), rSave (3268, 58, 120, 120), rGear (3422, 58, 120, 120);
+    const juce::Rectangle<float> rStatus (740, 86, 1500, 72);
+    const juce::Point<float> kPower (118.0f, 121.76f);
+    const juce::Rectangle<float> rPower (68, 72, 100, 100);
 
     juce::Rectangle<int> toInt (juce::Rectangle<float> r) { return r.getSmallestIntegerContainer(); }
 
@@ -171,7 +206,7 @@ struct LearnBlink
     static void draw (juce::Graphics& g, juce::Rectangle<float> r, float radius)
     {
         g.setColour (col::accent);
-        g.drawRoundedRectangle (r.reduced (1.0f), radius, 1.6f);
+        g.drawRoundedRectangle (r.reduced (2.0f), radius, 4.0f);
     }
 };
 
@@ -204,98 +239,46 @@ public:
     void paint (juce::Graphics& g) override
     {
         useAccent();
-        // le composant deborde vers le bas pour l'ombre portee : le centre est a 66 points du haut
-        const juce::Point<float> c ((float) getWidth() * 0.5f, 66.0f);
+        // composant centre sur le potard ; ombre portee et anneau de jauge dans le fond
+        const juce::Point<float> c ((float) getWidth() * 0.5f, (float) getHeight() * 0.5f);
         const float a0 = juce::degreesToRadians (-135.0f), a1 = juce::degreesToRadians (135.0f);
         const float n = norm(), ang = a0 + n * (a1 - a0);
-        const float r = kKnobR, br = kKnobBodyR, rr = kKnobRingR;
+        const auto& art = Art::get();
 
-        // ombre portee longue sous le potard (lumiere en haut)
-        for (int i = 10; i >= 1; --i)
-        {
-            const float o = (float) i * 2.2f;
-            g.setColour (juce::Colours::black.withAlpha (0.055f));
-            g.fillEllipse (c.x - rr + o * 0.25f, c.y - rr + o, rr * 2.0f, rr * 2.0f);
-        }
-        // anneau sombre creuse
-        juce::ColourGradient ring (juce::Colour (0xff1d1d1d), c.x, c.y - rr, juce::Colour (0xff0b0b0b), c.x, c.y + rr, false);
-        g.setGradientFill (ring);
-        g.fillEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.07f));
-        g.drawEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f, 1.2f);
-
-        // valeur (accent) : depuis le debut, ou depuis le centre pour MIX
+        // jauge (accent) : depuis le debut, ou depuis le centre pour MIX
         const float from = bipolar ? 0.0f : a0;
         if (std::abs (ang - from) > 0.01f)
         {
-            juce::Path v; v.addCentredArc (c.x, c.y, r, r, 0.0f, juce::jmin (from, ang), juce::jmax (from, ang), true);
+            juce::Path v; v.addCentredArc (c.x, c.y, kGaugeR, kGaugeR, 0.0f, juce::jmin (from, ang), juce::jmax (from, ang), true);
             g.setColour (col::accent);
-            g.strokePath (v, juce::PathStrokeType (6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
+            g.strokePath (v, juce::PathStrokeType (8.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
-
-        // corps : metal sombre tourne (degrade radial, reflets coniques, cercles fins)
-        // valeurs relevees sur la maquette : corps presque uniforme (~#303030), leger reflet en haut a gauche
-        juce::ColourGradient body (juce::Colour (0xff373737), c.x, c.y, juce::Colour (0xff323232), c.x + br, c.y, true);
-        g.setGradientFill (body);
-        g.fillEllipse (c.x - br, c.y - br, br * 2.0f, br * 2.0f);
-        {
-            constexpr int wedges = 90;
-            for (int i = 0; i < wedges; ++i)
-            {
-                const float t0 = juce::MathConstants<float>::twoPi * (float) i / wedges;
-                const float t1 = juce::MathConstants<float>::twoPi * (float) (i + 1) / wedges;
-                const float tm = 0.5f * (t0 + t1);
-                const float k = std::cos (2.0f * (tm + 0.6f));             // deux reflets opposes
-                juce::Path w;
-                w.startNewSubPath (c);
-                w.lineTo (c.x + br * std::sin (t0), c.y - br * std::cos (t0));
-                w.lineTo (c.x + br * std::sin (t1), c.y - br * std::cos (t1));
-                w.closeSubPath();
-                g.setColour ((k > 0 ? juce::Colours::white : juce::Colours::black).withAlpha (0.022f * std::abs (k)));
-                g.fillPath (w);
-            }
-            for (int i = 0; i < 18; ++i)
-            {
-                const float rc = br * (0.12f + 0.84f * (float) i / 17.0f);
-                g.setColour ((i % 2 == 0 ? juce::Colours::white : juce::Colours::black).withAlpha (0.025f));
-                g.drawEllipse (c.x - rc, c.y - rc, rc * 2.0f, rc * 2.0f, 1.3f);
-            }
-            // reflet doux en haut a gauche
-            juce::ColourGradient hl (juce::Colours::white.withAlpha (0.07f), c.x - br * 0.62f, c.y - br * 0.62f,
-                                     juce::Colours::white.withAlpha (0.0f), c.x - br * 0.62f + br * 0.55f, c.y - br * 0.62f + br * 0.55f, true);
-            g.setGradientFill (hl);
-            g.fillEllipse (c.x - br, c.y - br, br * 2.0f, br * 2.0f);
-        }
-        // bord : liseré clair en haut, sombre en bas
-        juce::ColourGradient edge (juce::Colours::white.withAlpha (0.62f), c.x, c.y - br,
-                                   juce::Colours::white.withAlpha (0.0f), c.x, c.y - br * 0.55f, false);
-        g.setGradientFill (edge);
-        g.drawEllipse (c.x - br + 1.0f, c.y - br + 1.0f, br * 2.0f - 2.0f, br * 2.0f - 2.0f, 2.0f);
-        juce::ColourGradient low (juce::Colours::white.withAlpha (0.0f), c.x, c.y, juce::Colours::white.withAlpha (0.10f), c.x, c.y + br, false);
-        g.setGradientFill (low);
-        g.drawEllipse (c.x - br + 1.5f, c.y - br + 1.5f, br * 2.0f - 3.0f, br * 2.0f - 3.0f, 3.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.07f));      // liseré discret tout autour
-        g.drawEllipse (c.x - br + 1.5f, c.y - br + 1.5f, br * 2.0f - 3.0f, br * 2.0f - 3.0f, 2.5f);
-        g.setColour (juce::Colours::black.withAlpha (0.18f));
-        g.drawEllipse (c.x - br, c.y - br, br * 2.0f, br * 2.0f, 1.0f);
-
-        // repere : point blanc sur l'arc
-        const juce::Point<float> dot (c.x + r * std::sin (ang), c.y - r * std::cos (ang));
-        g.setColour (juce::Colours::black.withAlpha (0.45f));
-        g.fillEllipse (dot.x - 5.5f, dot.y - 4.5f, 11.0f, 11.0f);
+        const juce::Point<float> dot (c.x + kGaugeR * std::sin (ang), c.y - kGaugeR * std::cos (ang));
         g.setColour (juce::Colours::white);
-        g.fillEllipse (dot.x - 5.0f, dot.y - 5.0f, 10.0f, 10.0f);
+        g.fillEllipse (dot.x - 7.0f, dot.y - 7.0f, 14.0f, 14.0f);
+
+        // potard : centre fixe, couronne crantee qui tourne, reflet statique par-dessus
+        const auto kr = juce::Rectangle<float> (2.0f * kKnobR, 2.0f * kKnobR).withCentre (c);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        g.drawImage (art.knobCenter, kr);
+        if (art.knobCrown.isValid())
+        {
+            const float sc = 2.0f * kKnobR / (float) art.knobCrown.getWidth();
+            g.drawImageTransformed (art.knobCrown, juce::AffineTransform::translation (-0.5f * (float) art.knobCrown.getWidth(), -0.5f * (float) art.knobCrown.getHeight())
+                                                       .rotated (ang).scaled (sc).translated (c.x, c.y));
+        }
+        g.drawImage (art.knobReflect, kr);
 
         // valeur au centre (MIX : valeur + cote dominant « 50A », « 30B », « 0 » au centre)
         const int v = (int) std::lround (value());
         const juce::String txt = bipolar && v != 0 ? juce::String (std::abs (v)) + (v < 0 ? "A" : "B") : juce::String (v);
-        g.setFont (fSemi (txt.length() >= 4 ? 33.0f : 40.0f));
-        const juce::Rectangle<float> tr (c.x - 45, c.y - 24, 90, 46);
-        g.setColour (juce::Colours::black.withAlpha (0.65f));
-        g.drawText (txt, tr.translated (0.0f, 2.0f), juce::Justification::centred);
+        g.setFont (fBold (txt.length() >= 4 ? 60.0f : 72.0f));
+        const juce::Rectangle<float> tr (c.x - 90, c.y - 44, 180, 88);
+        g.setColour (juce::Colours::black.withAlpha (0.7f));
+        g.drawText (txt, tr.translated (2.0f, 3.0f), juce::Justification::centred);
         g.setColour (juce::Colours::white);
         g.drawText (txt, tr, juce::Justification::centred);
-        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, juce::Rectangle<float> (c.x - 64.0f, c.y - 64.0f, 128.0f, 128.0f), 14.0f);
+        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, juce::Rectangle<float> (2.0f * (kGaugeR + 14.0f), 2.0f * (kGaugeR + 14.0f)).withCentre (c), kGaugeR + 14.0f);
     }
 
     void mouseDown (const juce::MouseEvent& e) override
@@ -307,7 +290,7 @@ public:
     void mouseDrag (const juce::MouseEvent& e) override
     {
         if (! dragging) return;
-        const float sens = e.mods.isShiftDown() ? 1900.0f : 380.0f;
+        const float sens = (e.mods.isShiftDown() ? 1900.0f : 380.0f) * U;
         setNorm (fromVirtual (startNorm - (float) e.getDistanceFromDragStartY() / sens + (float) e.getDistanceFromDragStartX() / (sens * 2.0f)));
     }
     void mouseUp (const juce::MouseEvent&) override { if (dragging) attachment.endGesture(); dragging = false; }
@@ -354,29 +337,17 @@ public:
     void paint (juce::Graphics& g) override
     {
         useAccent();
+        // fente et graduations dans le fond : remplissage accent sous le bouton, puis le bouton (ombre comprise)
         const float cx = (float) getWidth() * 0.5f;
-        const float yT = kFaderTop - top - 11.0f, yB = kFaderBot - top + 11.0f;
-        // fente du fader
-        g.setColour (juce::Colours::white.withAlpha (0.08f));
-        g.fillRoundedRectangle (cx - 8.0f, yT + 1.5f, 16.0f, yB - yT, 8.0f);
-        g.setColour (juce::Colour (0xff080808));
-        g.fillRoundedRectangle (cx - 7.5f, yT, 15.0f, yB - yT, 7.5f);
-        const float y = yForNorm (norm());
-        g.setColour (col::accent);
-        g.fillRoundedRectangle (cx - 3.5f, y, 7.0f, yB - 4.0f - y, 3.5f);
-        // bouton chrome + ombre
-        const float tr = 17.0f;
-        g.setColour (juce::Colours::black.withAlpha (0.45f));
-        g.fillEllipse (cx - tr + 2.0f, y - tr + 4.0f, tr * 2.0f, tr * 2.0f);
-        juce::ColourGradient gr (juce::Colour (0xfff2f2f2), cx - tr * 0.4f, y - tr * 0.5f, juce::Colour (0xff7d7d7d), cx + tr * 0.6f, y + tr, true);
-        g.setGradientFill (gr);
-        g.fillEllipse (cx - tr, y - tr, tr * 2.0f, tr * 2.0f);
-        juce::ColourGradient cap (juce::Colour (0xffd8d8d8), cx, y - tr * 0.6f, juce::Colour (0xff9a9a9a), cx, y + tr * 0.6f, false);
-        g.setGradientFill (cap);
-        g.fillEllipse (cx - tr * 0.62f, y - tr * 0.62f, tr * 1.24f, tr * 1.24f);
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.drawEllipse (cx - tr, y - tr, tr * 2.0f, tr * 2.0f, 1.2f);
-        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat(), 8.0f);
+        const float y = yForNorm (norm()), yB = kSlotBot - top - 10.0f;
+        if (yB - y > 2.0f)
+        {
+            g.setColour (col::accent);
+            g.fillRoundedRectangle (cx - 6.0f, y, 12.0f, yB - y, 6.0f);
+        }
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        drawArt (g, Art::get().thumb, { cx, y });
+        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, getLocalBounds().toFloat(), 16.0f);
     }
     void mouseDown (const juce::MouseEvent& e) override
     {
@@ -384,7 +355,7 @@ public:
         dragging = true; startNorm = norm();
         attachment.beginGesture();
         // clic hors du bouton : le fader saute a la position cliquee
-        if (std::abs ((float) e.y - yForNorm (startNorm)) > 18.0f)
+        if (std::abs ((float) e.y - yForNorm (startNorm)) > 36.0f)
         {
             startNorm = juce::jlimit (0.0f, 1.0f, (kFaderBot - top - (float) e.y) / (kFaderBot - kFaderTop));
             setNorm (startNorm);
@@ -418,45 +389,31 @@ public:
         useAccent();
         const auto r = getLocalBounds().toFloat();
         const bool on = norm() > 0.5f;
+        const auto& art = Art::get();
         if (kind == power)
         {
+            // icone power : accent quand l'effet est actif (fond sans icone)
             const auto c = r.getCentre();
-            const juce::Colour ic = on ? col::accent : col::dim;
-            juce::Path p; p.addCentredArc (c.x, c.y + 2.0f, 16.0f, 16.0f, 0.0f, juce::degreesToRadians (38.0f), juce::degreesToRadians (322.0f), true);
-            p.startNewSubPath (c.x, c.y - 17.0f); p.lineTo (c.x, c.y - 1.0f);
-            const juce::PathStrokeType st (4.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
-            g.setColour (juce::Colours::black.withAlpha (0.5f));
-            g.strokePath (p, st, juce::AffineTransform::translation (1.0f, 2.0f));
-            g.setColour (ic);
-            g.strokePath (p, st);
+            drawIcon (g, art.icPower.get(), c.translated (2.0f, 3.0f), 100.0f, juce::Colours::black.withAlpha (0.5f));
+            drawIcon (g, art.icPower.get(), c, 100.0f, on ? col::accent : col::dim);
         }
         else
         {
-            const auto b = r.reduced (3.0f);
+            // bouton du fond (relache) ; enfonce + symbole accent quand actif, leger eclaircissement au survol
+            const auto c = r.getCentre();
             if (on)
             {
-                g.setColour (juce::Colours::black.withAlpha (0.45f));
-                g.fillRoundedRectangle (b.translated (0, 3.0f), 7.0f);
-                g.setColour (col::accent);
-                g.fillRoundedRectangle (b, 7.0f);
-                g.setColour (col::btnEdge);
-                g.drawRoundedRectangle (b.reduced (1.0f), 7.0f, 2.0f);
+                g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+                drawArt (g, art.btn100Down, c);
+                drawIcon (g, kind == mute ? art.icMute.get() : art.icPhase.get(), c.translated (0, 2.0f), 100.0f, col::accent);
             }
-            else drawButtonBg (g, b, false, isMouseOver(), 7.0f);
-            g.setColour (on ? juce::Colour (0xff111111) : col::icon);
-            if (kind == mute)
+            else if (isMouseOver())
             {
-                g.setFont (fSemi (27.0f));
-                g.drawText ("M", b.translated (0, 0.5f), juce::Justification::centred);
-            }
-            else
-            {
-                const auto c = b.getCentre();
-                g.drawEllipse (c.x - 11.0f, c.y - 11.0f, 22.0f, 22.0f, 3.2f);
-                g.drawLine (c.x - 12.5f, c.y + 13.5f, c.x + 12.5f, c.y - 13.5f, 3.2f);
+                g.setColour (juce::Colours::white.withAlpha (0.05f));
+                g.fillRoundedRectangle (juce::Rectangle<float> (100.0f, 100.0f).withCentre (c), 13.0f);
             }
         }
-        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, r, 7.0f);
+        if (LearnBlink::shown (proc, learnIdx)) LearnBlink::draw (g, juce::Rectangle<float> (100.0f, 100.0f).withCentre (r.getCentre()), 13.0f);
     }
     void mouseDown (const juce::MouseEvent& e) override
     {
@@ -483,77 +440,23 @@ public:
     void paint (juce::Graphics& g) override
     {
         useAccent();
-        const auto r = getLocalBounds().toFloat().reduced (3.0f);
-        const bool ampireStyle = true;   // tous les boutons a icone facon Ampire
-        if (ampireStyle) drawAmpireBtn (g, r, pressed, isMouseOver());
-        else drawButtonBg (g, r, pressed, isMouseOver());
-        const auto c = r.getCentre() + juce::Point<float> (0.0f, pressed ? 1.0f : 0.0f);
-        const auto shadow = juce::AffineTransform::translation (1.0f, 2.0f);
-        juce::Path p;
-        // icones d'Ampire (traits fins blancs) : liste + loupe pour le dossier, triangles evides pour precedent / suivant.
-        // Geometrie relevee sur le fond d'Ampire (en px de son fond, bouton de 92 px), mise a l'echelle du bouton.
-        const float u = r.getHeight() / 94.0f;
-        const juce::Colour ic (0xffebebeb);
-        const juce::PathStrokeType thin (3.0f * u, juce::PathStrokeType::mitered, juce::PathStrokeType::butt);
-        if (kind == folder)
+        // bouton et icone dans le fond : ici seulement l'etat enfonce (image du bouton enfonce + icone) et le survol
+        const auto c = getLocalBounds().toFloat().getCentre();
+        const auto& art = Art::get();
+        if (pressed)
         {
-            juce::Path li;
-            li.startNewSubPath (c.x - 21.0f * u, c.y - 14.5f * u); li.lineTo (c.x + 15.5f * u, c.y - 14.5f * u);
-            li.startNewSubPath (c.x - 21.0f * u, c.y - 1.0f * u);  li.lineTo (c.x + 8.0f * u, c.y - 1.0f * u);
-            li.startNewSubPath (c.x - 21.0f * u, c.y + 12.5f * u); li.lineTo (c.x + 1.5f * u, c.y + 12.5f * u);
-            juce::Path lens; lens.addEllipse (c.x + 10.5f * u, c.y + 2.5f * u, 14.5f * u, 14.5f * u);
-            juce::Path handle; handle.startNewSubPath (c.x + 22.5f * u, c.y + 14.5f * u); handle.lineTo (c.x + 29.0f * u, c.y + 21.0f * u);
-            g.setColour (ic);
-            g.strokePath (li, thin); g.strokePath (lens, thin);
-            g.strokePath (handle, juce::PathStrokeType (3.6f * u, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
-            return;
+            g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+            drawArt (g, art.btn120Down, c);
+            const juce::Drawable* d = kind == folder ? art.icList.get() : kind == prev ? art.icPrev.get() : kind == next ? art.icNext.get()
+                                    : kind == save ? art.icSave.get() : art.icGear.get();
+            drawIcon (g, d, c.translated (0, 2.0f), 100.0f, juce::Colour (0xffd8d8d8));
         }
-        if (kind == prev || kind == next)
+        else if (isMouseOver())
         {
-            const float sd = kind == next ? 1.0f : -1.0f;
-            p.addTriangle (c.x - 13.0f * sd * u, c.y - 16.0f * u, c.x - 13.0f * sd * u, c.y + 16.0f * u, c.x + 15.0f * sd * u, c.y);
-            g.setColour (ic);
-            g.strokePath (p, juce::PathStrokeType (3.0f * u, juce::PathStrokeType::mitered, juce::PathStrokeType::butt));
-            if (proc != nullptr && LearnBlink::shown (*proc, learnIdx)) LearnBlink::draw (g, r, 8.0f);
-            return;
+            g.setColour (juce::Colours::white.withAlpha (0.05f));
+            g.fillRoundedRectangle (juce::Rectangle<float> (120.0f, 120.0f).withCentre (c), 13.0f);
         }
-        if (kind == save)
-        {
-            // disquette au trait fin (style Ampire) + « + » dans une pastille
-            g.setColour (ic);
-            juce::Path body;
-            body.startNewSubPath (c.x - 16.0f * u, c.y - 16.0f * u); body.lineTo (c.x + 9.0f * u, c.y - 16.0f * u);
-            body.lineTo (c.x + 16.0f * u, c.y - 9.0f * u); body.lineTo (c.x + 16.0f * u, c.y + 1.0f * u);
-            body.startNewSubPath (c.x + 1.0f * u, c.y + 16.0f * u); body.lineTo (c.x - 16.0f * u, c.y + 16.0f * u);
-            body.lineTo (c.x - 16.0f * u, c.y - 16.0f * u);
-            g.strokePath (body, thin);
-            juce::Path shutter; shutter.addRectangle (c.x - 9.0f * u, c.y - 16.0f * u, 14.0f * u, 9.0f * u);
-            g.strokePath (shutter, thin);
-            juce::Path label; label.addRectangle (c.x - 10.0f * u, c.y + 2.0f * u, 10.0f * u, 14.0f * u);
-            g.strokePath (label, thin);
-            const juce::Point<float> pc (c.x + 14.0f * u, c.y + 14.0f * u);
-            juce::Path plus;
-            plus.startNewSubPath (pc.x, pc.y - 7.0f * u); plus.lineTo (pc.x, pc.y + 7.0f * u);
-            plus.startNewSubPath (pc.x - 7.0f * u, pc.y); plus.lineTo (pc.x + 7.0f * u, pc.y);
-            g.strokePath (plus, juce::PathStrokeType (3.2f * u, juce::PathStrokeType::mitered, juce::PathStrokeType::butt));
-            return;
-        }
-        // roue dentee au trait fin (style Ampire)
-        juce::Path gp;
-        const int teeth = 8;
-        for (int i = 0; i < teeth * 2; ++i)
-        {
-            const float a0 = juce::MathConstants<float>::twoPi * (float) i / (teeth * 2) - 0.14f;
-            const float a1 = juce::MathConstants<float>::twoPi * (float) (i + 1) / (teeth * 2) - 0.14f;
-            const float rr = ((i % 2 == 0) ? 17.0f : 12.5f) * u;
-            if (i == 0) gp.startNewSubPath (c.x + rr * std::sin (a0), c.y - rr * std::cos (a0));
-            else gp.lineTo (c.x + rr * std::sin (a0), c.y - rr * std::cos (a0));
-            gp.lineTo (c.x + rr * std::sin (a1), c.y - rr * std::cos (a1));
-        }
-        gp.closeSubPath();
-        g.setColour (ic);
-        g.strokePath (gp, thin);
-        g.drawEllipse (c.x - 5.5f * u, c.y - 5.5f * u, 11.0f * u, 11.0f * u, 3.0f * u);
+        if (proc != nullptr && LearnBlink::shown (*proc, learnIdx)) LearnBlink::draw (g, juce::Rectangle<float> (120.0f, 120.0f).withCentre (c), 13.0f);
     }
     void mouseDown (const juce::MouseEvent& e) override
     {
@@ -592,8 +495,8 @@ public:
 
         save.proc = gear.proc = &proc;
         addAndMakeVisible (power); power.setBounds (toInt (rPower));
-        addAndMakeVisible (save);  save.setBounds (toInt (rSave.expanded (3.0f)));
-        addAndMakeVisible (gear);  gear.setBounds (toInt (rGear.expanded (3.0f)));
+        addAndMakeVisible (save);  save.setBounds (toInt (rSave.expanded (24.0f)));
+        addAndMakeVisible (gear);  gear.setBounds (toInt (rGear.expanded (24.0f)));
         save.onClick = [this] { presetFileMenu(); };
         gear.onClick = [this] { showGearMenu (gear); };
 
@@ -603,7 +506,7 @@ public:
         {
             auto* k = knobs[i];
             addAndMakeVisible (*k);
-            k->setBounds (toInt ({ kKnobX - 66.0f, kKnobY[i] - 66.0f, 132.0f, 154.0f }));
+            k->setBounds (toInt (juce::Rectangle<float> (2.0f * (kGaugeR + 20.0f), 2.0f * (kGaugeR + 20.0f)).withCentre ({ kKnobX, kKnobY[i] })));
             k->onValue = [this, k, name = juce::String (names[i]), i]
             {
                 const int v = (int) std::lround (k->value());
@@ -626,24 +529,24 @@ public:
             sl.next   = std::make_unique<IconBtn> (IconBtn::next, s == 0 ? ImpulseProcessor::lNextA : ImpulseProcessor::lNextB);
             sl.prev->proc = sl.next->proc = sl.folder->proc = &proc;
             for (auto* b : { sl.folder.get(), sl.prev.get(), sl.next.get() }) addAndMakeVisible (*b);
-            sl.folder->setBounds (toInt (rFolder.translated (dx, 0).expanded (3.0f)));
-            sl.prev->setBounds (toInt (rPrev.translated (dx, 0).expanded (3.0f)));
-            sl.next->setBounds (toInt (rNext.translated (dx, 0).expanded (3.0f)));
+            sl.folder->setBounds (toInt (rFolder.translated (dx, 0).expanded (24.0f)));
+            sl.prev->setBounds (toInt (rPrev.translated (dx, 0).expanded (24.0f)));
+            sl.next->setBounds (toInt (rNext.translated (dx, 0).expanded (24.0f)));
             sl.folder->onClick = [this, s] { chooseFile (s); };
             sl.prev->onClick = [this, s] { proc.stepIR (s, -1); };
             sl.next->onClick = [this, s] { proc.stepIR (s, +1); };
 
             sl.mute  = std::make_unique<ToggleBtn> (proc, s == 0 ? "muteA" : "muteB", s == 0 ? ImpulseProcessor::lMuteA : ImpulseProcessor::lMuteB, ToggleBtn::mute);
             sl.phase = std::make_unique<ToggleBtn> (proc, s == 0 ? "phaseA" : "phaseB", s == 0 ? ImpulseProcessor::lPhaseA : ImpulseProcessor::lPhaseB, ToggleBtn::phase);
-            addAndMakeVisible (*sl.mute);  sl.mute->setBounds (toInt (rMute.translated (sx, 0).expanded (3.0f)));
-            addAndMakeVisible (*sl.phase); sl.phase->setBounds (toInt (rPhase.translated (sx, 0).expanded (3.0f)));
+            addAndMakeVisible (*sl.mute);  sl.mute->setBounds (toInt (rMute.translated (sx, 0).expanded (24.0f)));
+            addAndMakeVisible (*sl.phase); sl.phase->setBounds (toInt (rPhase.translated (sx, 0).expanded (24.0f)));
             sl.mute->onValue  = [this, s] { askRepaint (toInt (rWave[s])); };
             sl.phase->onValue = [this, s] { showStatus (juce::String ("PHASE ") + (s == 0 ? "A " : "B ") + (slot[s].phase->norm() > 0.5f ? "inverted" : "normal")); };
 
             sl.fader = std::make_unique<Fader> (proc, s == 0 ? "gainA" : "gainB", s == 0 ? ImpulseProcessor::lGainA : ImpulseProcessor::lGainB);
-            sl.fader->top = kFaderTop - 26.0f;
+            sl.fader->top = kSlotTop - 40.0f;
             addAndMakeVisible (*sl.fader);
-            sl.fader->setBounds (toInt ({ kFaderX + sx - 22.0f, kFaderTop - 26.0f, 44.0f, kFaderBot - kFaderTop + 52.0f }));
+            sl.fader->setBounds (toInt ({ kFaderX + sx - 64.0f, kSlotTop - 40.0f, 128.0f, kSlotBot - kSlotTop + 80.0f }));
             sl.fader->onValue = [this, s]
             {
                 const float db = ImpulseProcessor::faderPosToDb (slot[s].fader->norm());
@@ -673,34 +576,34 @@ public:
         }
         else drawStatic (g);    // premiere image seulement, avant que le timer ait prepare le cache
 
-        // ligne d'etat (le logo IMPULSE est dans le fond)
+        // ligne d'etat (bandeau du haut, entre le logo et le preset)
         const auto st = statusText();
         if (st.isNotEmpty())
         {
             g.setColour (proc.learnTarget.load() >= 0 ? col::accent : juce::Colour (0xffd8d8d8));
-            g.setFont (fSemi (24.0f));
+            g.setFont (fSemi (46.0f));
             g.drawText (st, rStatus, juce::Justification::centred);
         }
 
         // preset
         {
             const auto r = rPreset;
-            const float ax = r.getX() + 34.0f, cy = r.getCentreY();
+            const float ax = r.getX() + 72.0f, cy = r.getCentreY(), u = 1.15f;
             juce::Path up, dn;
-            up.addTriangle (ax - 11.0f, cy + 4.0f, ax + 11.0f, cy + 4.0f, ax, cy - 9.0f);
-            dn.addTriangle (ax + 13.0f, cy - 4.0f, ax + 35.0f, cy - 4.0f, ax + 24.0f, cy + 9.0f);
+            up.addTriangle (ax - 26 * u, cy + 8 * u, ax - 12 * u, cy - 9 * u, ax + 2 * u, cy + 8 * u);
+            dn.addTriangle (ax + 4 * u, cy - 8 * u, ax + 32 * u, cy - 8 * u, ax + 18 * u, cy + 9 * u);
             g.setColour (col::accent);
             g.fillPath (up); g.fillPath (dn);
             g.setColour (col::text);
-            g.setFont (fMedium (28.0f));
+            g.setFont (fMedium (58.0f));
             juce::String name = proc.getPresetName();
             name = name.isEmpty() ? juce::String ("(Custom)") : name + (proc.isPresetDirty() ? " *" : "");
-            g.drawText (name, juce::Rectangle<float> (r.getX() + 90, r.getY(), r.getWidth() - 150, r.getHeight()), juce::Justification::centredLeft, true);
+            g.drawText (name, juce::Rectangle<float> (r.getX() + 150, r.getY(), r.getWidth() - 260, r.getHeight()), juce::Justification::centredLeft, true);
             juce::Path chev;
-            const float vx = r.getRight() - 33.0f;
-            chev.startNewSubPath (vx - 11.0f, cy - 5.5f); chev.lineTo (vx, cy + 5.5f); chev.lineTo (vx + 11.0f, cy - 5.5f);
+            const float vx = r.getRight() - 62.0f, k = 1.35f;
+            chev.startNewSubPath (vx - 14 * k, cy - 7 * k); chev.lineTo (vx, cy + 7 * k); chev.lineTo (vx + 14 * k, cy - 7 * k);
             g.setColour (col::accent);
-            g.strokePath (chev, juce::PathStrokeType (3.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            g.strokePath (chev, juce::PathStrokeType (6.0f * k * 0.75f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
 
         // slots : nom + forme d'onde
@@ -709,17 +612,15 @@ public:
             const auto& inf = info[s];
             const auto nb = rName.translated (s * kCardDx, 0);
             // badge A / B
-            const juce::Rectangle<float> badge (nb.getX() + 26, nb.getCentreY() - 26.0f, 58, 52);
-            g.setColour (juce::Colours::black.withAlpha (0.4f));
-            g.fillRoundedRectangle (badge.translated (0, 2.0f), 6.0f);
+            const juce::Rectangle<float> badge (nb.getX() + 26, nb.getCentreY() - 38.0f, 84, 76);
             g.setColour (col::accent);
-            g.fillRoundedRectangle (badge, 6.0f);
-            g.setColour (juce::Colour (0xff111111));
-            g.setFont (fBold (40.0f));
+            g.fillRoundedRectangle (badge, 9.0f);
+            g.setColour (juce::Colour (0xff0d1a22));
+            g.setFont (fBold (60.0f));
             g.drawText (s == 0 ? "A" : "B", badge.translated (0, 1.0f), juce::Justification::centred);
-            const auto tr = juce::Rectangle<float> (badge.getRight() + 24, nb.getY(), nb.getRight() - badge.getRight() - 36, nb.getHeight());
+            const auto tr = juce::Rectangle<float> (badge.getRight() + 36, nb.getY(), nb.getRight() - badge.getRight() - 56, nb.getHeight());
             const bool showErr = inf.error.isNotEmpty() && juce::Time::getMillisecondCounter() < errUntil[s];
-            g.setFont (fName (29.0f));
+            g.setFont (fName (58.0f));
             if (showErr) { g.setColour (col::err); g.drawFittedText (inf.error, tr.toNearestInt(), juce::Justification::centredLeft, 2, 0.8f); }
             else if (inf.loaded)
             {
@@ -727,7 +628,7 @@ public:
                 g.drawFittedText (inf.name, tr.toNearestInt(), juce::Justification::centredLeft, 2, 0.8f);
             }
             else { g.setColour (col::dim); g.drawText ("Drop an IR or click to load", tr, juce::Justification::centredLeft, true); }
-            if (dropHover == s) { g.setColour (col::accent.withAlpha (0.8f)); g.drawRoundedRectangle (nb.reduced (2.0f), 8.0f, 3.0f); }
+            if (dropHover == s) { g.setColour (col::accent.withAlpha (0.8f)); g.drawRoundedRectangle (nb.reduced (3.0f), 13.0f, 5.0f); }
 
             // forme d'onde
             const auto wr = rWaveIn[s];
@@ -736,10 +637,10 @@ public:
                 const bool muted = slot[s].mute->norm() > 0.5f;
                 g.saveState();
                 g.reduceClipRegion (wr.toNearestInt());
-                const float cy = wr.getCentreY(), amp = wr.getHeight() * 0.5f - 2.0f;
-                const int cols = (int) wr.getWidth();
+                const float cy = wr.getCentreY(), amp = wr.getHeight() * 0.45f;
+                const int cols = (int) (wr.getWidth() * 0.5f);
                 const int P = (int) inf.peakMax.size();
-                const float x0 = wr.getX() + 8.0f, pw = (wr.getWidth() - 8.0f) / (float) cols;
+                const float x0 = wr.getX() + 10.0f, pw = (wr.getWidth() - 20.0f) / (float) cols;
                 juce::Path wave;
                 float lastY = cy;
                 for (int x = 0; x < cols; ++x)
@@ -756,32 +657,31 @@ public:
                     lastY = std::abs (lastY - y0) < std::abs (lastY - y1) ? y1 : y0;
                 }
                 g.setColour (col::accent.withAlpha (muted ? 0.1f : 0.25f));
-                g.strokePath (wave, juce::PathStrokeType (6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+                g.strokePath (wave, juce::PathStrokeType (12.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
                 g.setColour (col::accent.withAlpha (muted ? 0.3f : 1.0f));
-                g.strokePath (wave, juce::PathStrokeType (2.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+                g.strokePath (wave, juce::PathStrokeType (5.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
                 g.restoreState();
                 g.setColour (col::info);
-                g.setFont (fMedium (24.0f));
-                const auto ir = s == 0 ? juce::Rectangle<float> (wr.getX() + 12, wr.getY() + 16, wr.getWidth() - 32, 30)
-                                       : juce::Rectangle<float> (wr.getX() + 12, wr.getY() + 16, wr.getWidth() - 32, 30);
-                g.drawText (formatInfo (inf), ir, juce::Justification::centredRight, true);
+                g.setFont (fMedium (42.0f));
+                g.drawText (formatInfo (inf), juce::Rectangle<float> (wr.getX() + 20, wr.getY() + 22, wr.getWidth() - 42, 56), juce::Justification::centredRight, true);
             }
-            if (dropHover == s) { g.setColour (col::accent.withAlpha (0.6f)); g.drawRoundedRectangle (rWave[s].reduced (3.0f), 8.0f, 3.0f); }
+            if (dropHover == s) { g.setColour (col::accent.withAlpha (0.6f)); g.drawRoundedRectangle (rWave[s].reduced (5.0f), 18.0f, 5.0f); }
         }
     }
 
-    // fond statique : la maquette de l'utilisateur (plaque brossee, cadres, etiquettes, graduations, logo IMPULSE),
-    // puis ce que le plugin remplace : interieur des formes d'onde, cadres des noms et du preset, logo NINE HANDS | DSP
+    // fond statique : rendu v005 (plaque, ecrans, boutons, etiquettes, graduations, logos, ombres),
+    // puis la grille et la grande lettre des formes d'onde
     void drawStatic (juce::Graphics& g)
     {
         g.fillAll (col::outer);
-        if (background.isValid())
+        const auto& art = Art::get();
+        if (art.bg.isValid())
         {
-            // fond 3500 px reduit par moities successives jusqu'a la taille affichee (pas d'aliasing)
+            // fond reduit par moities successives jusqu'a la taille affichee (pas d'aliasing)
             const int target = (int) std::ceil ((float) kW * g.getInternalContext().getPhysicalPixelScaleFactor());
             if (! bgScaled.isValid() || bgScaledFor != target)
             {
-                juce::Image im = background;
+                juce::Image im = art.bg;
                 while (im.getWidth() >= target * 2)
                     im = im.rescaled (im.getWidth() / 2, im.getHeight() / 2, juce::Graphics::highResamplingQuality);
                 bgScaled = im; bgScaledFor = target;
@@ -789,97 +689,19 @@ public:
             g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
             g.drawImage (bgScaled, rFrame);
         }
-
-        drawInset (g, rPreset, 7.0f);
         for (int s = 0; s < 2; ++s)
         {
-            drawInset (g, rName.translated (s * kCardDx, 0), 8.0f);
-
-            // interieur de la forme d'onde (le cadre clair de la maquette reste visible autour)
-            const auto wi = rWaveIn[s];
-            g.saveState();
-            juce::Path clip; clip.addRoundedRectangle (wi.getX(), wi.getY(), wi.getWidth(), wi.getHeight(), 8.0f, 8.0f,
-                                                      s == 0, s == 1, s == 0, s == 1);
-            g.reduceClipRegion (clip);
-            juce::ColourGradient wg (col::waveTop, 0, wi.getY(), col::waveBot, 0, wi.getBottom(), false);
-            g.setGradientFill (wg);
-            g.fillRect (wi);
-            g.setColour (col::letter);
-            g.setFont (fSemi (kLetterSize));
-            {
-                // lettre de fond (position et proportions mesurees sur la maquette)
-                const float lx = wi.getCentreX() + kLetterDx[s];
-                juce::Graphics::ScopedSaveState ss (g);
-                g.addTransform (juce::AffineTransform::scale (kLetterSx[s], 1.0f, lx, 0.0f));
-                g.drawText (s == 0 ? "A" : "B", juce::Rectangle<float> (lx - 300.0f, wi.getY() + kLetterDy, 600.0f, kLetterSize), juce::Justification::centredTop);
-            }
-            g.setColour (col::grid);
             const auto wr = rWave[s];
+            g.saveState();
+            g.reduceClipRegion (rWaveIn[s].toNearestInt());
+            g.setColour (col::grid);
             for (float f : { 0.2476f, 0.405f, 0.595f, 0.745f })
-                g.fillRect (wi.getX(), wr.getY() + wr.getHeight() * f - 1.0f, wi.getWidth(), 2.0f);
+                g.fillRect (wr.getX() + 10.0f, wr.getY() + wr.getHeight() * f - 1.5f, wr.getWidth() - 20.0f, 3.0f);
+            g.setColour (juce::Colours::white.withAlpha (0.045f));
+            g.setFont (fSemi (570.0f));
+            g.drawText (s == 0 ? "A" : "B", juce::Rectangle<float> (wr.getX(), wr.getBottom() - 20.0f - 540.0f, wr.getWidth(), 640.0f), juce::Justification::centredTop);
             g.restoreState();
-
-            // graduations du fader (vectorielles) : 12 6 0 6 12 18 36 45 60 inf, de kFaderTop a kFaderBot
-            {
-                static const char* labels[] = { "12", "6", "0", "6", "12", "18", "36", "45", "60", "" };
-                const float sx = s * kStripDx;
-                for (int i = 0; i < 10; ++i)
-                {
-                    const float y = kFaderTop + (kFaderBot - kFaderTop) * (float) i / 9.0f;
-                    g.setColour (i == 2 ? juce::Colour (0xff7a7a7a) : juce::Colour (0xff585858));
-                    g.fillRect (634.0f + sx, y - 1.0f, i == 2 ? 56.0f : 47.0f, 2.0f);
-                    g.fillRect (kTickLabelX + sx - 28.0f, y - 1.0f, 9.0f, 2.0f);
-                    g.fillRect (kTickLabelX + sx + 17.0f, y - 1.0f, 6.0f, 2.0f);
-                    g.setColour (col::tickTxt);
-                    if (i < 9)
-                    {
-                        g.setFont (fMedium (20.5f));
-                        g.drawText (labels[i], juce::Rectangle<float> (kTickLabelX + sx - 20.0f, y - 11.0f, 40.0f, 22.0f), juce::Justification::centred);
-                    }
-                    else
-                    {
-                        // infini : deux boucles
-                        g.drawEllipse (kTickLabelX + sx - 9.5f, y - 4.5f, 9.5f, 9.0f, 1.9f);
-                        g.drawEllipse (kTickLabelX + sx + 0.0f, y - 4.5f, 9.5f, 9.0f, 1.9f);
-                    }
-                }
-            }
         }
-
-        // colonne centrale : etiquettes (vectorielles, mesurees sur la maquette)
-        auto label = [&g] (const juce::String& t, float cx, float cy, float size)
-        {
-            g.setFont (fMedium (size));
-            const juce::Rectangle<float> lr (cx - 120, cy - size * 0.8f, 240, size * 1.6f);
-            g.setColour (juce::Colours::black.withAlpha (0.65f));
-            g.drawText (t, lr.translated (0.0f, 2.0f), juce::Justification::centred);
-            g.setColour (juce::Colour (0xffe6e6e6));
-            g.drawText (t, lr, juce::Justification::centred);
-        };
-        // (taille JUCE = hauteur de ligne ~ 1.21 x la taille en points de la maquette)
-        label ("MIX", 937.0f, kLabelY[0], 28.0f);
-        label ("OVERLOAD", 936.0f, kLabelY[1] - 6.0f, 28.0f);
-        label ("VARIPHI", 936.0f, kLabelY[2], 28.0f);
-        label ("IR A", 868.0f, 250.0f + kTop, 23.0f);
-        label ("IR B", 1005.0f, 250.0f + kTop, 23.0f);
-        label ("%", 937.0f, 443.0f + kTop, 24.5f);
-        label ("%", 936.5f, 626.0f + kTop, 24.5f);
-
-        // filet vertical entre le power et le logo (redessine : le bandeau du fond a ete agrandi)
-        {
-            const float cy = rPower.getCentreY(), hh = 21.0f;
-            g.setColour (juce::Colours::black.withAlpha (0.85f));
-            g.fillRoundedRectangle (115.8f, cy - hh - 1.0f, 5.2f, hh * 2.0f + 2.0f, 1.5f);
-            g.setColour (juce::Colour (0xffbdbdbd));
-            g.fillRoundedRectangle (117.6f, cy - hh, 1.7f, hh * 2.0f, 0.85f);
-        }
-        // logo IMPULSE (vectoriel)
-        if (title != nullptr)
-            title->drawWithin (g, rTitle, juce::RectanglePlacement::centred, 1.0f);
-
-        // logo NINE HANDS | DSP (vectoriel) en bas, a la place du texte entre deux traits
-        if (logo != nullptr)
-            logo->drawWithin (g, rBrand.withSizeKeepingCentre (rBrand.getWidth() * 0.92f, rBrand.getHeight() * 0.92f), juce::RectanglePlacement::centred, 0.88f);
     }
 
     // ---------------------------------------------------------------- souris / fichiers
@@ -895,7 +717,7 @@ public:
         }
         if (rPreset.contains (p))
         {
-            if (p.x < rPreset.getX() + 30.0f) { proc.stepPreset (p.y < rPreset.getCentreY() ? -1 : +1); return; }
+            if (p.x < rPreset.getX() + 120.0f) { proc.stepPreset (p.y < rPreset.getCentreY() ? -1 : +1); return; }
             presetMenu();
             return;
         }
@@ -1328,9 +1150,6 @@ private:
     int drawnLearn = -1, dropHover = -1;
     bool drawnBlink = false;
     // logos vectoriels (SVG fournis) : nets a toutes les tailles
-    std::unique_ptr<juce::Drawable> logo  = juce::Drawable::createFromImageData (BinaryData::nine_hands_logo_blanc_svg, BinaryData::nine_hands_logo_blanc_svgSize);
-    std::unique_ptr<juce::Drawable> title = juce::Drawable::createFromImageData (BinaryData::impulse_logo_blanc_svg, BinaryData::impulse_logo_blanc_svgSize);
-    juce::Image background = juce::ImageCache::getFromMemory (BinaryData::background_jpg, BinaryData::background_jpgSize);   // maquette (metal brosse)
 
     // anti-gel v2
     juce::Image bgCache;

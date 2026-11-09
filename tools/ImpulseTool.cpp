@@ -67,6 +67,7 @@ int main (int argc, char** argv)
         if (arg (8).isNotEmpty()) setP (proc, "variphi", arg (8).getFloatValue());
         if (arg (9).isNotEmpty()) setP (proc, "gainB", ImpulseProcessor::faderDbToPos (arg (9).getFloatValue()));
         proc.prepareToPlay (48000.0, 256);
+        if (arg (12) == "states") { setP (proc, "muteA", 1.0f); setP (proc, "phaseB", 1.0f); setP (proc, "active", 0.0f); }   // etats allumes / eteints
         if (arg (10).isNotEmpty()) proc.accentColour = 0xff000000u | (juce::uint32) arg (10).getHexValue64();
         std::unique_ptr<juce::AudioProcessorEditor> ed (proc.createEditor());
         // fenetre a la taille demandee (le fond est calcule a cette taille, comme dans l'hote), capture a 1:1
