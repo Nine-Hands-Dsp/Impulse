@@ -3,6 +3,7 @@
 // Tout se passe sur le thread de messages (createView / destroyView / processeur cree ou detruit).
 // ============================================================================
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 #include "NhdStack.h"
 #include <map>
 
@@ -59,6 +60,7 @@ namespace
         std::unique_ptr<juce::AudioProcessorEditor> ed (it->second->createEditor());
         if (ed == nullptr) return 0;
         ed->setResizable (false, false);              // la taille est pilotee par Ampire (pas de poignee dans le stack)
+        if (auto* ie = dynamic_cast<ImpulseEditor*> (ed.get())) ie->stacked = true;   // bibliotheque d'IR gardee dans Impulse
         ed->setResizeLimits (1, 1, 100000, 100000);
         ed->setOpaque (true);
         place (*ed, x, y, w, h, scale);

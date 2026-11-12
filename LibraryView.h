@@ -359,7 +359,8 @@ public:
         const auto p = m (e);
         tipShown = false;
         lastWheel = juce::Time::getMillisecondCounter();
-        if (! floating)
+        if (inStack()) {}                    // colle sous Ampire : la bibliotheque reste dans la zone d'Impulse, seule la colonne defile
+        else if (! floating)
         {
             juce::Component::SafePointer<LibraryPanel> sp (this);
             juce::MessageManager::callAsync ([sp] { if (sp != nullptr && sp->isShowing()) { sp->startFloat(); sp->target = 1.0f; sp->startTimerHz (60); } });
@@ -436,10 +437,12 @@ private:
     float lift() const { return 82.0f * ex; }                    // en-tete reduit a une ligne
     float extraH() const { return 522.0f * kGrow * exH; }        // hauteur ajoutee sous Ampire
     bool compact() const { return ex > 0.02f; }
+    // Impulse colle sous Ampire (mode stack) : pas d'agrandissement ni d'en-tete reduit, rien ne deborde
+    bool inStack() { auto* ed = editor(); return ed != nullptr && ed->stacked; }
     void startFloat()
     {
         auto* parent = getParentComponent();
-        if (floating || parent == nullptr || dlgMode != 0) return;
+        if (floating || parent == nullptr || dlgMode != 0 || inStack()) return;
         const auto sb = getScreenBounds();
         if (sb.isEmpty()) return;
         homeParent = parent;
