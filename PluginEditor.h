@@ -22,6 +22,7 @@ public:
     void chooseIRFolder();                           // dossier des IR par defaut (= dossier de la bibliotheque)
     juce::LookAndFeel* getMenuLook() { return menuLook.get(); }   // menus au design d'Octopus (MenuStyle.h)
     void openLibrary (int slot);                     // bibliotheque d'IR (fenetre d'Ampire)
+    bool stacked = false;                            // vue collee sous Ampire (mode stack) : menus de presets gardes dans Impulse
    #if IMPULSE_TOOL
     void previewLibrary (int tab, bool signedIn);    // outil Linux : captures de la bibliotheque
    #endif
