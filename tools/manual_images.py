@@ -16,6 +16,8 @@ for n, (x, y) in pts.items():
 an.save(A + 'annotated.png')
 Image.open('m_col.png').convert('RGB').save(A + 'colour.png')
 Image.open('m_pick.png').convert('RGB').crop((610, 0, 1170, 470)).save(A + 'picker.png')
+import os
+if os.path.exists('m_lib.png'): Image.open('m_lib.png').convert('RGB').save(A + 'library.png')   # bibliotheque d'IR (ImpulseTool render ... - lib)
 # ---- couverture « minimale » : facade detouree (alpha du fond v005), reflet sur sol noir, halo d'accent tres doux
 # cover.png : la facade occupe exactement (PAD, PAD) -> (PAD + W, PAD + H) ; le reste est le reflet et le halo (fond noir).
 alpha = Image.open('/home/claude/Impulse/assets/v5/bg.png').getchannel('A').resize((W, H), Image.LANCZOS)
