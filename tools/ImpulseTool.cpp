@@ -76,6 +76,13 @@ int main (int argc, char** argv)
         if (arg (11) == "picker") if (auto* ie = dynamic_cast<ImpulseEditor*> (ed.get())) ie->openColourPicker (nullptr);
         juce::MessageManager::getInstance()->runDispatchLoopUntil (600);   // timer : cache du fond
         auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+        if (arg (12) == "lib" || arg (12) == "t3k" || arg (12) == "t3kout")   // bibliotheque d'IR (onglet Library / TONE3000)
+            if (auto* ie = dynamic_cast<ImpulseEditor*> (ed.get()))
+            {
+                if (arg (12) == "lib") ie->openLibrary (0); else ie->previewLibrary (1, arg (12) == "t3k");
+                juce::MessageManager::getInstance()->runDispatchLoopUntil (1500);
+                img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            }
         if (arg (12) == "blur")   // apercu du flou de mouvement de la couronne : OVERLOAD tourne de +4 % entre deux images
         {
             setP (proc, "overload", arg (7).getFloatValue() + 4.0f);
@@ -93,7 +100,7 @@ int main (int argc, char** argv)
     if (mode == "menu")         // ImpulseTool menu <out.png> : apercu du menu clic droit (MenuStyle.h, design d'Octopus)
     {
         MenuStyle::MenuLnf lf;
-        const char* items[] = { "MIDI Learn: Mix A/B (-)", "Clear MIDI: Mix A/B", "-", "#IR A: Cab 4x12 V30 SM57 A.wav", "Load IR...", "Previous IR in folder",
+        const char* items[] = { "MIDI Learn: Mix A/B (-)", "Clear MIDI: Mix A/B", "-", "#IR A: Cab 4x12 V30 SM57 A.wav", "Open IR library...", "Load IR file...", "Previous IR in folder",
                                 "Next IR in folder", "Show in folder", "Clear", "-", ">Plugin size", ">Presets", ">Settings", ">MIDI" };
         const int W = 380, n = (int) (sizeof (items) / sizeof (items[0]));
         int H = 14 + 52 + 11;
@@ -102,8 +109,9 @@ int main (int argc, char** argv)
         juce::Graphics g (img);
         g.addTransform (juce::AffineTransform::scale (2.0f));
         lf.drawPopupMenuBackground (g, W, H);
-        MenuStyle::Header hd (MenuStyle::fonts(), MenuStyle::Badge::ofUi (MenuStyle::icoParams), "Impulse",
-                              juce::String::fromUTF8 ("NINE HANDS | DSP  \xc2\xb7  v" JucePlugin_VersionString));
+        const juce::Colour acc (arg (3).isNotEmpty() ? (juce::uint32) arg (3).getHexValue64() | 0xff000000u : 0xff4fc3f7u);
+        MenuStyle::Header hd (MenuStyle::fonts(), MenuStyle::Badge::ofUi (MenuStyle::icoParams, acc), "Impulse",
+                              juce::String::fromUTF8 ("Dual IR loader  \xc2\xb7  v" JucePlugin_VersionString));
         hd.setBounds (7, 7, W - 14, 52);
         { juce::Graphics::ScopedSaveState ss (g); g.setOrigin (7, 7); hd.paint (g); }
         int y = 7 + 52;

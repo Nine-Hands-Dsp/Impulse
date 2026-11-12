@@ -19,7 +19,12 @@ public:
     static constexpr int numSizes = 3;
     ImpulseProcessor& getProc() { return proc; }
     void openColourPicker (juce::Component* near);   // nuancier (couleur d'accent)
-    void chooseIRFolder();                           // dossier des IR par defaut
+    void chooseIRFolder();                           // dossier des IR par defaut (= dossier de la bibliotheque)
+    juce::LookAndFeel* getMenuLook() { return menuLook.get(); }   // menus au design d'Octopus (MenuStyle.h)
+    void openLibrary (int slot);                     // bibliotheque d'IR (fenetre d'Ampire)
+   #if IMPULSE_TOOL
+    void previewLibrary (int tab, bool signedIn);    // outil Linux : captures de la bibliotheque
+   #endif
 
 private:
     friend class ImpulseContent;         // son timer surveille le moteur de rendu (anti-gel v2)

@@ -3,6 +3,7 @@
 #include "WigaWindowSize.h"
 #include "ColourPicker.h"
 #include "MenuStyle.h"
+#include "IRLibrary.h"
 
 // ============================================================================
 // IMPULSE - interface v005 (maquette Impulse_Design_Mockup_v005, rendu realiste 3600 x 1440, nov. 2026)
@@ -558,13 +559,43 @@ private:
 };
 
 // ============================================================================ contenu de la fenetre
+// ---------------------------------------------------------------- bibliotheque d'IR (fenetre de bibliotheque d'Ampire)
+static juce::LookAndFeel* menuLookFor (juce::Component* c)
+{
+    if (c != nullptr)
+        if (auto* ed = c->findParentComponentOfClass<ImpulseEditor>()) return ed->getMenuLook();
+    static MenuStyle::MenuLnf fallback;      // bibliotheque flottante (hors de la fenetre du plugin)
+    return &fallback;
+}
+
+// ce que la fenetre de bibliotheque attend du processeur (dans Ampire : AmpireProcessor)
+struct LibHost
+{
+    explicit LibHost (ImpulseProcessor& p) : ip (p), library (*lib)
+    {
+        static bool scanned = false;                 // une seule analyse du dossier par session (commune aux fenetres)
+        const auto dir = ImpulseSettings::irFolder (JucePlugin_Name);
+        if (dir.isDirectory() && dir != library.getRoot()) { library.setRoot (dir); scanned = true; }
+        else if (! scanned) { library.rescan(); scanned = true; }
+    }
+    struct SlotView { CaptureMeta meta; };
+    SlotView getSlotInfo (int s) const { SlotView v; v.meta.path = ip.getInfo (s).path; return v; }
+    void loadCapture (int s, const juce::File& f) { if (ip.loadIR (s, f)) library.addRecent (f.getFullPathName()); }
+    juce::File startFolder (int s) const { return ip.startFolder (s); }
+
+    ImpulseProcessor& ip;
+    juce::SharedResourcePointer<CaptureLibrary> lib;
+    CaptureLibrary& library;
+};
+#include "LibraryView.h"
+
 class ImpulseContent : public juce::Component,
                        public juce::FileDragAndDropTarget,
                        private juce::Timer
 {
 public:
     explicit ImpulseContent (ImpulseProcessor& p)
-        : proc (p),
+        : proc (p), libHost (p), library (libHost),
           power (p, "active", ImpulseProcessor::lActive, ToggleBtn::power),
           mix (p, "mix", ImpulseProcessor::lMix, true),
           over (p, "overload", ImpulseProcessor::lOverload, false),
@@ -613,7 +644,7 @@ public:
             sl.folder->setBounds (toInt (rFolder.translated (dx, 0).expanded (24.0f)));
             sl.prev->setBounds (toInt (rPrev.translated (dx, 0).expanded (24.0f)));
             sl.next->setBounds (toInt (rNext.translated (dx, 0).expanded (24.0f)));
-            sl.folder->onClick = [this, s] { chooseFile (s); };
+            sl.folder->onClick = [this, s] { openLibrary (s); };
             sl.prev->onClick = [this, s] { proc.stepIR (s, -1); };
             sl.next->onClick = [this, s] { proc.stepIR (s, +1); };
 
@@ -637,6 +668,9 @@ public:
 
         refreshInfos();
         startTimerHz (30);
+        addChildComponent (library);              // bibliotheque d'IR, au-dessus de tout
+        library.setBounds (0, 0, kW, kH);
+        library.onClose = [this] { askRepaint (getLocalBounds()); };
     }
 
     ~ImpulseContent() override = default;
@@ -803,8 +837,16 @@ public:
             return;
         }
         for (int s = 0; s < 2; ++s)
-            if (rName.translated (s * kCardDx, 0).contains (p)) { chooseFile (s); return; }
+            if (rName.translated (s * kCardDx, 0).contains (p)) { openLibrary (s); return; }
     }
+
+    // bibliotheque d'IR : meme fenetre que la bibliotheque de captures d'Ampire (verre fume, Library + TONE3000)
+    void openLibrary (int s) { library.open (s); }
+   #if IMPULSE_TOOL
+    void previewLibrary (int tab, bool signedIn) { library.previewDemo (signedIn); library.open (0); library.setTab (tab); }
+   #endif
+    LibraryPanel& getLibrary() { return library; }
+    void setLibraryRoot (const juce::File& f) { libHost.library.setRoot (f); }
 
     bool isInterestedInFileDrag (const juce::StringArray& files) override
     {
@@ -878,7 +920,14 @@ public:
     void showMainMenu (juce::Component* target, int learnIdx, int slot, bool withPresets = true)
     {
         juce::PopupMenu m;
-        MenuStyle::header (m, MenuStyle::icoParams, "Impulse", juce::String::fromUTF8 ("NINE HANDS | DSP  \xc2\xb7  v" JucePlugin_VersionString));
+        useAccent();
+        if (learnIdx >= 0)          // menu d'une commande : son nom et son assignation MIDI
+        {
+            const auto t = proc.learnAssignText (learnIdx);
+            MenuStyle::header (m, MenuStyle::icoMix, col::accent, ImpulseProcessor::learnDef (learnIdx).name,
+                               t == "none" ? juce::String ("MIDI: not assigned") : "MIDI: " + t);
+        }
+        else MenuStyle::header (m, MenuStyle::icoParams, col::accent, "Impulse", juce::String::fromUTF8 ("Dual IR loader  \xc2\xb7  v" JucePlugin_VersionString));
         const int lt = proc.learnTarget.load();
         if (learnIdx >= 0)
         {
@@ -894,7 +943,8 @@ public:
             const auto inf = proc.getInfo (slot);
             slotPath = inf.path;
             m.addSectionHeader (juce::String ("IR ") + (slot == 0 ? "A" : "B") + (inf.loaded ? ": " + inf.name : juce::String()));
-            m.addItem (300, "Load IR...");
+            m.addItem (305, "Open IR library...");
+            m.addItem (300, "Load IR file...");
             m.addItem (301, "Previous IR in folder");
             m.addItem (302, "Next IR in folder");
             m.addItem (303, "Show in folder", inf.loaded && juce::File (inf.path).existsAsFile());
@@ -956,7 +1006,7 @@ public:
 
         juce::Component::SafePointer<ImpulseContent> sp (this);
         juce::Component::SafePointer<juce::Component> tp (target);
-        m.showMenuAsync (menuOptions (juce::Rectangle<int> (juce::Desktop::getMousePosition(), juce::Desktop::getMousePosition()).withSize (1, 1)),
+        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (juce::Rectangle<int> (juce::Desktop::getMousePosition(), juce::Desktop::getMousePosition()).withSize (1, 1)),
                          [sp, tp, names, slot, slotPath] (int r)
         {
             if (sp == nullptr || r == 0) return;
@@ -969,7 +1019,8 @@ public:
             if (handleLearnChoice (r, &p)) return;
             if (handleSizeChoice (r, &c)) return;
             if (c.handlePresetChoice (r, names)) return;
-            if (r == 300) c.chooseFile (slot);
+            if (r == 305) c.openLibrary (slot);
+            else if (r == 300) c.chooseFile (slot);
             else if (r == 301) p.stepIR (slot, -1);
             else if (r == 302) p.stepIR (slot, +1);
             else if (r == 303) juce::File (slotPath).revealToUser();
@@ -1034,9 +1085,11 @@ private:
     void presetMenu()
     {
         juce::PopupMenu m;
+        useAccent();
+        MenuStyle::header (m, MenuStyle::icoPreset, col::accent, "Presets", proc.getPresetName());
         const auto names = addPresetItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        m.showMenuAsync (menuOptions (localAreaToGlobal (toInt (rPreset))),
+        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (localAreaToGlobal (toInt (rPreset))),
                          [sp, names] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, names); });
     }
 
@@ -1052,9 +1105,11 @@ private:
     void presetFileMenu()
     {
         juce::PopupMenu m;
+        useAccent();
+        MenuStyle::header (m, MenuStyle::icoSave, col::accent, "Presets", proc.getPresetName());
         addPresetFileItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        m.showMenuAsync (menuOptions (save.getScreenBounds()),
+        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (save.getScreenBounds()),
                          [sp] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, {}); });
     }
 
@@ -1208,7 +1263,7 @@ private:
         const bool blink = lt >= 0 && (now / 250) % 2 == 0;
         if (lt != drawnLearn || blink != drawnBlink)
         {
-            for (auto* c : getChildren()) c->repaint();
+            for (auto* c : getChildren()) if (c != &library) c->repaint();
             drawnLearn = lt; drawnBlink = blink;
         }
 
@@ -1217,6 +1272,8 @@ private:
     }
 
     ImpulseProcessor& proc;
+    LibHost libHost;
+    LibraryPanel library;
     ToggleBtn power;
     Knob mix, over, vari;
     IconBtn save, gear;
@@ -1307,10 +1364,15 @@ void ImpulseEditor::chooseIRFolder()
                                     if (f.isDirectory())
                                     {
                                         ImpulseSettings::setIrFolder (JucePlugin_Name, f);
-                                        if (sp != nullptr) sp->content->showStatus ("IR folder: " + f.getFileName());
+                                        if (sp != nullptr) { sp->content->setLibraryRoot (f); sp->content->showStatus ("IR folder: " + f.getFileName()); }
                                     }
                                 });
 }
+
+void ImpulseEditor::openLibrary (int slot) { content->openLibrary (slot); }
+#if IMPULSE_TOOL
+void ImpulseEditor::previewLibrary (int tab, bool signedIn) { content->previewLibrary (tab, signedIn); }
+#endif
 
 // nuancier d'Octopus, ouvert dans la fenetre du plugin pres de 'near' (pas de fenetre flottante que l'hote pourrait cacher)
 void ImpulseEditor::openColourPicker (juce::Component* near)

@@ -238,4 +238,10 @@ namespace MenuStyle
         m.addCustomItem (9001, std::make_unique<Header> (fonts(), Badge::ofUi (ico), title, sub), nullptr, title);
         m.addSeparator();
     }
+    // pastille a la couleur d'accent du plugin
+    inline void header (PopupMenu& m, int ico, Colour c, const String& title, const String& sub)
+    {
+        m.addCustomItem (9001, std::make_unique<Header> (fonts(), Badge::ofUi (ico, c), title, sub), nullptr, title);
+        m.addSeparator();
+    }
 }

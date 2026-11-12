@@ -4,11 +4,14 @@ target_sources(ImpulseTool PRIVATE
   ImpulseTool.cpp
   ../PluginProcessor.cpp
   ../PluginEditor.cpp
-  ../ImpulseStack.cpp)
+  ../ImpulseStack.cpp
+  ../IRLibrary.cpp
+  ../Tone3000.cpp)
 target_include_directories(ImpulseTool PRIVATE .. ${JUCE_SOURCE_DIR}/modules/juce_audio_processors_headless/format_types/VST3_SDK)
 target_compile_features(ImpulseTool PRIVATE cxx_std_17)
 target_compile_definitions(ImpulseTool PRIVATE
   JucePlugin_Name="Impulse"
+  IMPULSE_TOOL=1
   JucePlugin_VersionString="${PROJECT_VERSION}"
   JUCE_STANDALONE_APPLICATION=1
   JUCE_MODAL_LOOPS_PERMITTED=1
@@ -19,4 +22,5 @@ target_link_libraries(ImpulseTool PRIVATE
   ImpulseAssets
   juce::juce_audio_utils
   juce::juce_dsp
+  juce::juce_cryptography
   juce::juce_recommended_config_flags)

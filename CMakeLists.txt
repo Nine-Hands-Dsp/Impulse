@@ -29,6 +29,8 @@ juce_add_binary_data(ImpulseAssets SOURCES
   assets/Poppins-Regular.ttf
   assets/Poppins-Medium.ttf
   assets/Poppins-Bold.ttf
+  assets/t3k/T3K_logo.svg
+  assets/t3k/TONE3000_logo.svg
   assets/v5/bg.png
   assets/v5/knob_center.png
   assets/v5/knob_crown.png
@@ -67,7 +69,9 @@ juce_add_plugin(Impulse
 target_sources(Impulse PRIVATE
   PluginProcessor.cpp
   PluginEditor.cpp
-  ImpulseStack.cpp)
+  ImpulseStack.cpp
+  IRLibrary.cpp
+  Tone3000.cpp)
 
 # mode stack (NhdStack.h) : interface VST3 de REAPER (funknown.h du SDK VST3 fourni avec JUCE)
 target_include_directories(Impulse PRIVATE
@@ -85,6 +89,7 @@ target_link_libraries(Impulse
     ImpulseAssets
     juce::juce_audio_utils
     juce::juce_dsp
+    juce::juce_cryptography
   PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags)
