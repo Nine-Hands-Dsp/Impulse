@@ -1089,22 +1089,16 @@ private:
         MenuStyle::header (m, MenuStyle::icoPreset, col::accent, "Presets", proc.getPresetName());
         const auto names = addPresetItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (localAreaToGlobal (toInt (rPreset)), true),
+        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (localAreaToGlobal (toInt (rPreset))),
                          [sp, names] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, names); });
     }
 
     // menus a la taille normale, comme sur toutes les pedales : l'echelle vient de la fenetre du plugin
     // (pas du contenu reduit par setTransform), la position reste celle du clic / du bouton
-    // insideStack : en mode stack (Impulse colle sous Ampire), le menu de presets reste dans la zone d'Impulse
-    // (il defile s'il est trop long) ; hors stack, rien ne change
-    juce::PopupMenu::Options menuOptions (juce::Rectangle<int> screenArea, bool insideStack = false)
+    juce::PopupMenu::Options menuOptions (juce::Rectangle<int> screenArea)
     {
         juce::Component* ed = getParentComponent();
-        auto o = juce::PopupMenu::Options().withTargetComponent (ed != nullptr ? ed : this).withTargetScreenArea (screenArea);
-        if (insideStack)
-            if (auto* ie = findParentComponentOfClass<ImpulseEditor>(); ie != nullptr && ie->stacked)
-                o = o.withParentComponent (ie).withTargetScreenArea (screenArea);
-        return o;
+        return juce::PopupMenu::Options().withTargetComponent (ed != nullptr ? ed : this).withTargetScreenArea (screenArea);
     }
 
     // disquette : enregistrer / exporter / importer
@@ -1115,7 +1109,7 @@ private:
         MenuStyle::header (m, MenuStyle::icoSave, col::accent, "Presets", proc.getPresetName());
         addPresetFileItems (m);
         juce::Component::SafePointer<ImpulseContent> sp (this);
-        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (save.getScreenBounds(), true),
+        MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (save.getScreenBounds()),
                          [sp] (int r) { if (sp != nullptr) sp->handlePresetChoice (r, {}); });
     }
 
