@@ -916,28 +916,42 @@ private:
 
 public:
     // ---------------------------------------------------------------- menu clic droit (meme presentation que les autres pedales)
-    // [MIDI Learn de la commande] [IR du slot] > Plugin size > Presets > Settings > MIDI > version
-    void showMainMenu (juce::Component* target, int learnIdx, int slot, bool withPresets = true)
+    // tronc commun : en-tete, presets utilisateur, [IR du slot], Settings, MIDI, Plugin size
+    // menu d'une commande : en-tete + MIDI Learn / Clear MIDI / Cancel MIDI learn
+    juce::PopupMenu buildMenu (int learnIdx, int slot, juce::StringArray& names, juce::String& slotPath)
     {
         juce::PopupMenu m;
         useAccent();
-        if (learnIdx >= 0)          // menu d'une commande : son nom et son assignation MIDI
-        {
-            const auto t = proc.learnAssignText (learnIdx);
-            MenuStyle::header (m, MenuStyle::icoMix, col::accent, ImpulseProcessor::learnDef (learnIdx).name,
-                               t == "none" ? juce::String ("MIDI: not assigned") : "MIDI: " + t);
-        }
-        else MenuStyle::header (m, MenuStyle::icoParams, col::accent, "Impulse", juce::String::fromUTF8 ("Dual IR loader  \xc2\xb7  v" JucePlugin_VersionString));
         const int lt = proc.learnTarget.load();
         if (learnIdx >= 0)
         {
+            const auto t = proc.learnAssignText (learnIdx);
             const juce::String name = ImpulseProcessor::learnDef (learnIdx).name;
-            m.addItem (1000 + learnIdx, "MIDI Learn: " + name + " (" + assignText (proc, learnIdx) + ")", true, lt == learnIdx);
-            m.addItem (1100 + learnIdx, "Clear MIDI: " + name, proc.ccMap[learnIdx].load() >= 0 || proc.noteMap[learnIdx].load() >= 0);
-            if (lt >= 0) m.addItem (1200, "Cancel MIDI learn");
+            MenuStyle::header (m, MenuStyle::icoMix, col::accent, name, t == "none" ? juce::String ("MIDI: not assigned") : "MIDI: " + t);
+            m.addItem (1000 + learnIdx, "MIDI Learn: " + name, true, lt == learnIdx);
+            m.addItem (1100 + learnIdx, "Clear MIDI: " + name, t != "none");
+            m.addItem (1200, "Cancel MIDI learn", lt >= 0);
+            return m;
+        }
+        MenuStyle::header (m, MenuStyle::icoParams, col::accent, "Impulse", "IR loader  v" JucePlugin_VersionString);
+
+        // presets utilisateur (nommes) : Load user preset / Save user preset
+        {
+            juce::PopupMenu loadM, saveM;
+            names = proc.getPresetNames();
+            const auto cur = proc.getPresetName();
+            loadM.addItem (500, "Init (empty)");
+            loadM.addSeparator();
+            if (names.isEmpty()) loadM.addItem (590, "No preset saved yet", false);
+            for (int i = 0; i < names.size() && i < 400; ++i) loadM.addItem (600 + i, names[i], true, names[i] == cur);
+            loadM.addSeparator();
+            loadM.addItem (505, "Import preset from file...");
+            addSaveItems (saveM);
+            m.addSubMenu ("Load user preset", loadM);
+            m.addSubMenu ("Save user preset", saveM);
             m.addSeparator();
         }
-        juce::String slotPath;
+
         if (slot >= 0)
         {
             const auto inf = proc.getInfo (slot);
@@ -950,22 +964,7 @@ public:
             m.addItem (303, "Show in folder", inf.loaded && juce::File (inf.path).existsAsFile());
             m.addItem (304, "Clear", inf.loaded);
             if (inf.loaded)
-                m.addItem (305, "Gain applied: " + juce::String (inf.normDb, 1) + " dB" + (inf.isLong ? "  (long IR / reverb)" : "  (cab IR)"), false);
-            m.addSeparator();
-        }
-
-        juce::PopupMenu sizes;
-        addSizeItems (sizes, *this);
-        m.addSubMenu ("Plugin size", sizes);
-        m.addSeparator();
-
-        // Presets : dans le clic droit, pas dans la roue crantee (les presets ont leur menu en haut et la disquette)
-        juce::StringArray names;
-        if (withPresets)
-        {
-            juce::PopupMenu presets;
-            names = addPresetItems (presets);
-            m.addSubMenu ("Presets", presets);
+                m.addItem (306, "Gain applied: " + juce::String (inf.normDb, 1) + " dB" + (inf.isLong ? "  (long IR / reverb)" : "  (cab IR)"), false);
             m.addSeparator();
         }
 
@@ -988,22 +987,37 @@ public:
         for (int i = 0; i < 7; ++i) highM.addItem (20 + i, i == 0 ? juce::String ("Off") : juce::String (kHighs[i] / 1000.0, 1).replace (".0", "") + " kHz", true, std::abs (high - (float) kHighs[i]) < 10.0f);
         settings.addSubMenu ("Low cut", lowM);
         settings.addSubMenu ("High cut", highM);
-        settings.addSeparator();
-        settings.addItem (43, "MIDI footswitches latching (127 = on / 0 = off)", true, ! proc.toggleMomentary.load());
-        settings.addItem (44, "MIDI footswitches momentary (toggle each press)", true, proc.toggleMomentary.load());
         m.addSubMenu ("Settings", settings);
+        m.addSeparator();
 
         juce::PopupMenu midi;
+        midi.addSectionHeader ("MIDI Learn");
         for (int i = 0; i < ImpulseProcessor::numLearn; ++i)
-            midi.addItem (1000 + i, juce::String ("Learn: ") + ImpulseProcessor::learnDef (i).name + " (" + assignText (proc, i) + ")", true, lt == i);
+        {
+            const auto t = proc.learnAssignText (i);
+            midi.addItem (1000 + i, juce::String ("Learn: ") + ImpulseProcessor::learnDef (i).name + "  (" + (t == "none" ? juce::String ("not assigned") : t) + ")", true, lt == i);
+        }
         midi.addSeparator();
-        if (lt >= 0) midi.addItem (1200, "Cancel MIDI learn");
+        midi.addItem (1200, "Cancel MIDI learn", lt >= 0);
         midi.addItem (1201, "Clear all MIDI assignments");
         midi.addSeparator();
-        midi.addItem (910, "CC n+32 = fine (14-bit) for knobs on CC 0-31", false);
-        midi.addItem (911, "Buttons and IR / preset steps also learn a MIDI note", false);
+        midi.addItem (1203, "MIDI footswitch latching (127 = on / 0 = off)", true, ! proc.toggleMomentary.load());
+        midi.addItem (1202, "MIDI footswitch momentary (toggle each press)", true, proc.toggleMomentary.load());
         m.addSubMenu ("MIDI", midi);
+        m.addSeparator();
 
+        juce::PopupMenu sizes;
+        addSizeItems (sizes, *this);
+        m.addSubMenu ("Plugin size", sizes);
+        return m;
+    }
+
+    void showMainMenu (juce::Component* target, int learnIdx, int slot, bool withPresets = true)
+    {
+        juce::ignoreUnused (withPresets);
+        juce::StringArray names;
+        juce::String slotPath;
+        auto m = buildMenu (learnIdx, slot, names, slotPath);
         juce::Component::SafePointer<ImpulseContent> sp (this);
         juce::Component::SafePointer<juce::Component> tp (target);
         MenuStyle::styled (m, menuLookFor (this)).showMenuAsync (menuOptions (juce::Rectangle<int> (juce::Desktop::getMousePosition(), juce::Desktop::getMousePosition()).withSize (1, 1)),
@@ -1032,8 +1046,6 @@ public:
             else if (r == 40) { if (auto* ed = c.findParentComponentOfClass<ImpulseEditor>()) ed->chooseIRFolder(); }
             else if (r == 41) ImpulseSettings::irFolder (JucePlugin_Name).revealToUser();
             else if (r == 42) ImpulseSettings::setIrFolder (JucePlugin_Name, juce::File());
-            else if (r == 43) p.toggleMomentary = false;
-            else if (r == 44) p.toggleMomentary = true;
             c.repaint();
         });
     }
@@ -1054,6 +1066,16 @@ private:
         m.addSeparator();
         addPresetFileItems (m);
         return names;
+    }
+    void addSaveItems (juce::PopupMenu& m)
+    {
+        const auto cur = proc.getPresetName();
+        m.addItem (502, "Save preset as...");
+        m.addItem (501, cur.isNotEmpty() ? "Save \"" + cur + "\"" : juce::String ("Save preset"), cur.isNotEmpty());
+        m.addItem (503, cur.isNotEmpty() ? "Delete \"" + cur + "\"" : juce::String ("Delete preset"), cur.isNotEmpty());
+        m.addSeparator();
+        m.addItem (504, "Export preset to file...");
+        m.addItem (506, "Open presets folder");
     }
     void addPresetFileItems (juce::PopupMenu& m)
     {
@@ -1306,11 +1328,10 @@ ImpulseEditor::ImpulseEditor (ImpulseProcessor& p) : AudioProcessorEditor (&p), 
     addAndMakeVisible (*content);
     setResizable (true, true);
     // jamais plus petit que la taille par defaut (« 60 % »)
-    setResizeLimits (kWin, kWinH, (int) std::lround (kWin * 2.2f), (int) std::lround (kWinH * 2.2f));
+    setResizeLimits (kWin, kWinH, (int) std::lround (kWin * 2.5f), (int) std::lround (kWinH * 2.5f));   // jusqu'a 150 %
+    hostLock.setLimits (kWin, kWinH, (int) std::lround (kWin * 2.5f), (int) std::lround (kWinH * 2.5f));
     getConstrainer()->setFixedAspectRatio ((double) kVisW / (double) kVisH);
-    const int saved = juce::jlimit (-1, 2, proc.uiScaleIdx.load());
-    if (saved >= 0) setScaleIndex (saved);
-    else            applyScaleIndex (WigaWindowSize::defaultIndex (JucePlugin_Name, numSizes));
+    applyScaleIndex (NineHandsWindow::openIndex (JucePlugin_Name, proc.uiScaleIdx.load(), numSizes));
 }
 
 ImpulseEditor::~ImpulseEditor()
@@ -1339,6 +1360,7 @@ void ImpulseEditor::checkRenderer()
 {
     if ((void*) getPeer() != lastPeer || juce::Time::getMillisecondCounter() - lastRendererCheck >= 1000)
         useSoftwareRenderer();
+    if (! stacked) hostLock.track (*this);
 }
 
 void ImpulseEditor::resetRenderer()
@@ -1395,7 +1417,7 @@ void ImpulseEditor::openColourPicker (juce::Component* near)
     addAndMakeVisible (layer);
     layer->toFront (true);
 }
-void ImpulseEditor::parentHierarchyChanged() { useSoftwareRenderer(); }
+void ImpulseEditor::parentHierarchyChanged() { useSoftwareRenderer(); if (! stacked) hostLock.track (*this); }
 void ImpulseEditor::visibilityChanged() { useSoftwareRenderer(); if (isShowing()) repaint(); }
 
 void ImpulseEditor::resized()
@@ -1425,6 +1447,7 @@ void ImpulseEditor::applyScaleIndex (int idx)
     idx = juce::jlimit (0, numSizes - 1, idx);
     const int w = (int) std::lround (kWin * kScales[idx]);
     setSize (w, (int) std::lround ((double) w * kVisH / kVisW));
+    if (! stacked) hostLock.enforce();
 }
 
 // ============================================================================ menus clic droit
@@ -1447,8 +1470,8 @@ static void addSizeItems (juce::PopupMenu& m, juce::Component& c)
     juce::PopupMenu defSizes;
     for (int i = 0; i < ImpulseEditor::numSizes; ++i)
     {
-        m.addItem (101 + i, juce::String (names[i]) + (i == def ? "  (default)" : ""), true, cur == i);
-        defSizes.addItem (120 + i, names[i], true, i == def);
+        m.addItem (NineHandsWindow::idSize + i, juce::String (names[i]) + (i == def ? "  (default)" : ""), true, cur == i);
+        defSizes.addItem (NineHandsWindow::idDefault + i, names[i], true, i == def);
     }
     m.addSeparator();
     m.addSubMenu ("Default size (new windows)", defSizes);
@@ -1458,15 +1481,12 @@ static bool handleSizeChoice (int r, juce::Component* c)
 {
     if (c == nullptr) return false;
     auto* ed = c->findParentComponentOfClass<ImpulseEditor>();
+    if (ed == nullptr) ed = dynamic_cast<ImpulseEditor*> (c);
     if (ed == nullptr) return false;
-    if (r >= 101 && r <= 103) { ed->setScaleIndex (r - 101); return true; }
-    if (r >= 120 && r < 120 + ImpulseEditor::numSizes)
-    {
-        WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 120);
-        ed->setScaleIndex (-1);
-        return true;
-    }
-    return false;
+    int inst = ed->getProc().uiScaleIdx.load();
+    if (NineHandsWindow::handleSize (r, JucePlugin_Name, ImpulseEditor::numSizes, inst) < 0) return false;
+    ed->setScaleIndex (inst);                  // -1 = suit la taille par defaut (ne fige pas l'instance)
+    return true;
 }
 
 static juce::String assignText (ImpulseProcessor& p, int i)
@@ -1482,6 +1502,8 @@ static bool handleLearnChoice (int r, ImpulseProcessor* p)
     else if (r >= 1100 && r < 1100 + ImpulseProcessor::numLearn) p->clearLearn (r - 1100);
     else if (r == 1200) p->learnTarget.store (-1);
     else if (r == 1201) p->resetMidiMap();
+    else if (r == 1202) p->toggleMomentary = true;
+    else if (r == 1203) p->toggleMomentary = false;
     return true;
 }
 
@@ -1491,6 +1513,12 @@ static void showContextMenu (juce::Component& c, int learnIdx)
     auto* content = dynamic_cast<ImpulseContent*> (&c);
     if (content == nullptr) content = c.findParentComponentOfClass<ImpulseContent>();
     if (content != nullptr) content->showMainMenu (&c, learnIdx, -1);
+}
+
+juce::PopupMenu ImpulseEditor::buildContextMenu (int learnIdx)
+{
+    juce::StringArray names; juce::String path;
+    return content->buildMenu (learnIdx, -1, names, path);
 }
 
 static void showGearMenu (juce::Component& c)

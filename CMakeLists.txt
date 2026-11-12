@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 endif()
 
-project(WigaImpulse VERSION 1.5.9)
+project(WigaImpulse VERSION 1.6.0)
 
 option(IMPULSE_TOOLS "Build the Linux render / test tools" OFF)
 
@@ -73,6 +73,17 @@ target_sources(Impulse PRIVATE
   IRLibrary.cpp
   Tone3000.cpp)
 
+
+# verrou de taille de la fenetre du DAW (jamais sous 60 %, jamais au-dela de 150 %)
+if(APPLE)
+  target_sources(Impulse PRIVATE WindowMinSize.mm)
+  target_link_libraries(Impulse PRIVATE "-framework Cocoa")
+else()
+  target_sources(Impulse PRIVATE WindowMinSize.cpp)
+endif()
+if(WIN32)
+  target_link_libraries(Impulse PRIVATE comctl32 user32)
+endif()
 # mode stack (NhdStack.h) : interface VST3 de REAPER (funknown.h du SDK VST3 fourni avec JUCE)
 target_include_directories(Impulse PRIVATE
   ${JUCE_SOURCE_DIR}/modules/juce_audio_processors_headless/format_types/VST3_SDK)
